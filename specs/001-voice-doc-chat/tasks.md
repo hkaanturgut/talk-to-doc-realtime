@@ -313,7 +313,7 @@ mute and stop.
   - assert upload, preview collapsed/expand, Start, transcript lines streaming, interruption tag,
     mute badge, Stop;
   - run on both mobile projects.
-- [ ] T042 [US1] Update `README.md`: features, local setup (`az login`, `.env.local`), env table,
+- [X] T042 [US1] Update `README.md`: features, local setup (`az login`, `.env.local`), env table,
   deploy (`azd up`), and the Mermaid sequence diagram of the session handshake. Then run quickstart
   M1 to M6 and M12 to M14 on the iPhone and record the results in the PR. (README done; iPhone run is
   an owner task.)

@@ -62,9 +62,9 @@ idle ──start──▶ requesting_mic ──granted──▶ connecting ─�
   ▲                 │ denied/no device                    │
   │                 └──────────▶ idle(mode=text) ◀─────────┤ user switches to text
   │                                                        │
-  │   live ⇄ (assistant_speaking | listening)  sub-state from audio buffer + VAD events
+  │   live ⇄ (listening | thinking | assistant_speaking)  sub-state from audio buffer + VAD events
   │                                                        │
-  │                 live ──pc disconnected 2s / failed──▶ reconnecting ──ok──▶ live
+  │                 live ──offline / data channel close / pc disconnected 2s / failed──▶ reconnecting ──ok──▶ live
   │                                                        │ 30 s elapsed
   │                                                        ▼
   └──────────────stop / cap reached──────────────── disconnected ──Reconnect──▶ connecting

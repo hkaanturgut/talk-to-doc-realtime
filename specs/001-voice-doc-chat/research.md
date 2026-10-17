@@ -236,7 +236,8 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
     runtime CSP would need `proxy.ts`.
   - `media-src 'self' blob:`.
   - `Permissions-Policy: microphone=(self)`.
-  - `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
+  - `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+    `X-Frame-Options: DENY`.
 - **Inputs**: every route validates with zod. Uploads are limited to 25 MB and checked for the PDF
   type. Pasted text is capped at 400,000 chars. YouTube URLs are host-allowlisted, which prevents SSRF:
   the server only calls fixed YouTube and Supadata hosts, never a user-supplied host.

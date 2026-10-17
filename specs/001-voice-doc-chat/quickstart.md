@@ -50,7 +50,7 @@ gitleaks git -v .        # full-history secret scan, must report 0 leaks
 | # | Scenario | Expected |
 |---|---|---|
 | M1 | Upload a 2 to 10 MB text PDF | preview within 10 s, collapsed, shows pages and char count |
-| M2 | Start Voice Chat, allow mic | Connecting → Live within ~3 s; spoken greeting naming the document |
+| M2 | Start Voice Chat, allow mic; time from opening the app to the first spoken answer | Connecting → Live within ~3 s; spoken greeting naming the document; first answer under 60 s from opening (SC-001) |
 | M3 | Ask a question answered on page 3 | correct spoken answer; both sides appear in transcript live |
 | M4 | Interrupt mid-answer and ask a follow-up | audio stops in under 0.5 s; entry marked interrupted; new answer follows |
 | M5 | Mute, speak, unmute | nothing transcribed while muted; badge shows Muted |

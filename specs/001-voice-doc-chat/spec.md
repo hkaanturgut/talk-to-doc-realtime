@@ -214,7 +214,7 @@ restore it.
   connecting, live (with sub-states listening, thinking, assistant speaking), reconnecting,
   disconnected, error. Muted is shown as a separate indicator alongside the state.
 - **FR-018**: The system MUST release the microphone when the session stops or the page is closed.
-- **FR-030**: A voice session MUST end after 15 minutes, with a visible warning at 13 minutes; the
+- **FR-030** *(added in clarification)*: A voice session MUST end after 15 minutes, with a visible warning at 13 minutes; the
   user can start a new session on the same document.
 
 **Fallback and resilience**
@@ -232,7 +232,8 @@ restore it.
 - **FR-023**: No long-lived credential or secret MUST ever be sent to or stored on the user's device;
   the device only receives short-lived, single-session access.
 - **FR-024**: The system MUST limit session starts to 10 per minute per client and MUST show a
-  "Too many attempts" message beyond that.
+  "Too many attempts" message beyond that. (The limit is counted per server instance; with up to 3
+  instances the worst case is 30 per minute, an accepted trade-off.)
 - **FR-025**: Uploaded files MUST NOT be stored after extraction. Extracted text MUST be kept only in
   server memory and discarded 60 minutes after last use. Nothing persists across a page reload.
 - **FR-026**: The system MUST NOT require user accounts or sign-in.

@@ -128,7 +128,7 @@ Every code maps to a user-facing message in `src/shared/messages.ts` (spec FR-00
 | `MIC_DENIED` (client) | permission denied | how to re-enable + switched to text | n/a |
 | `MIC_UNAVAILABLE` (client) | no device / insecure context | switched to text | n/a |
 | `WEBRTC_UNSUPPORTED` (client) | old browser | text chat only | n/a |
-| `TOKEN_EXPIRED` (client) | `/realtime/calls` returns 401 (secret expired before use) | none: the client mints a new secret and retries once; shown only if the retry fails | yes |
+| `TOKEN_EXPIRED` (client, internal) | `/realtime/calls` returns 401 (secret expired before use) | not shown: the client mints a new secret and retries once; if that also fails the user sees `REALTIME_UNAVAILABLE`. Message kept for logs: "Session credential expired, retrying" | yes |
 | `MIC_LOST` (client) | input device removed (e.g. Bluetooth disconnect) | microphone changed, reconnecting audio | yes |
 | `CONNECTION_LOST` (client) | network drop after 30 s | Disconnected + Reconnect | yes |
 | `SESSION_CAP` (client) | 15-minute cap | session ended, start a new one | n/a |

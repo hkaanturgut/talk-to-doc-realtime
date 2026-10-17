@@ -119,7 +119,7 @@ routes, and Playwright mobile tests for critical flows. Write each test first an
 - [ ] T017 [P] Implement shared zod schemas in `src/shared/schemas.ts`: `PreviewDTO`,
   `SessionRequest` (history ≤ 40 items, ≤ 8,000 chars total), `SessionResponse`, `ErrorBody`, `kind`
   enum `"pdf" | "youtube" | "text"`.
-- [ ] T018 [P] Implement HTTP helpers in `src/server/http/`:
+- [ ] T018 Implement HTTP helpers in `src/server/http/`:
   - `respond.ts` maps `AppError` and zod errors (`INVALID_REQUEST`) and unknown errors to `ErrorBody`,
     never leaking stack traces; unknown and 5xx errors are recorded with `trackException(err, {route,
     code})` from T020 (Constitution V);
@@ -215,7 +215,7 @@ mute and stop.
   - canadacentral WebRTC OK (R2);
   - a 24 MB multipart upload reaches a test route through ACA ingress (R7).
   The spike page renders only when `SPIKE_ENABLED=1` is set on a dev revision.
-  If canadacentral fails, switch the `location` parameter for the Foundry account to `eastus2`.
+  If canadacentral fails, set the `foundryLocation` parameter to `eastus2` (the rest of the resources stay in canadacentral).
   Remove the spike page in T038.
 
 ### 3b. PDF ingestion and preview
@@ -247,7 +247,9 @@ mute and stop.
   - returns `{text, pageCount, pageOffsets}` so `pagesUsed` can be computed;
   - unit tests per fixture in `tests/unit/pdf.test.ts`, plus a `PDF_TIMEOUT` test with a 1 ms timeout.
 - [ ] T033 [US1] Write the integration test first, `tests/integration/ingest-pdf.test.ts`, covering
-  each fixture, a request with no file (`PDF_MISSING`), and a 26 MB body (`PDF_TOO_LARGE`).
+  each fixture, a request with no file (`PDF_MISSING`), and a 26 MB body (`PDF_TOO_LARGE`). Also
+  assert that no file is written to disk (spy on `fs` writes and check the temp dir) and that only the
+  extracted text is stored, not the raw bytes (FR-025).
   Then implement `POST /api/ingest/pdf` in `src/app/api/ingest/pdf/route.ts`:
   - rate limit 20 per minute per IP;
   - `content-length` precheck ≤ 26,214,400 + 65,536 bytes of multipart overhead, then `formData()`,
@@ -332,7 +334,7 @@ conversation.
   in `src/server/ingestion/youtube/index.ts`. Chain rules:
   - try providers in order;
   - map errors to `YOUTUBE_*` codes;
-  - stop on definitive errors (`NO_CAPTIONS`, `UNAVAILABLE`, `LIVE`);
+  - stop on definitive errors (`NO_CAPTIONS`, `UNAVAILABLE`);
   - continue on `BLOCKED` or transient errors;
   - language preference: `en`, then the original track, then the first; manual before
     auto-generated.
@@ -356,7 +358,8 @@ conversation.
   (empty 400, over 400,000 chars 413, 429 after 20 requests a minute, success). Then implement
   `POST /api/ingest/text` in `src/app/api/ingest/text/route.ts` (rate limit 20 per minute per IP).
 - [ ] T048 [US2] Build `src/components/source/YouTubeForm.tsx` (URL input with `inputmode="url"`,
-  paste button, inline validation) and `PasteTranscript.tsx` (textarea, char counter, shown
+  paste button, inline validation, "Fetching captions…" state while the request runs, FR-008) and
+  `PasteTranscript.tsx` (textarea, char counter, shown
   automatically on `YOUTUBE_BLOCKED` or `YOUTUBE_NO_CAPTIONS` and available as a tab). Add both tabs to
   `src/components/source/SourcePicker.tsx`; show the caption language and video duration (`durationSeconds` as m:ss) in the preview header.
 - [ ] T049 [US2] Write the Playwright e2e test `tests/e2e/youtube.spec.ts` (mocked routes: success,
@@ -519,7 +522,7 @@ docs.
 ## Parallel Opportunities
 
 - Phase 1: T002, T003, T004, T005 after T001.
-- Phase 2: T014 to T020 in parallel with the infra chain (T007 → T008 → T009 → T010 → T011 → T012 →
+- Phase 2: T014 to T020 in parallel (except T018, which runs after T020 because it uses `trackException`) with the infra chain (T007 → T008 → T009 → T010 → T011 → T012 →
   T013).
 - US1: T023 and T025 alongside T022. T029, T030, T031, T034, T035 and T036 are independent of each
   other.

@@ -57,7 +57,12 @@ export function DocumentPreview({ preview, onReplace }: { preview: PreviewDTO; o
             ▾
           </span>
         </summary>
-        <div className="max-h-72 overflow-y-auto border-t border-neutral-100 px-3 py-3 text-sm leading-relaxed whitespace-pre-wrap text-neutral-700 dark:border-neutral-800 dark:text-neutral-300">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Extracted text"
+          className="max-h-72 overflow-y-auto border-t border-neutral-100 px-3 py-3 text-sm leading-relaxed whitespace-pre-wrap text-neutral-700 dark:border-neutral-800 dark:text-neutral-300"
+        >
           {preview.contextText}
           {preview.truncated && (
             <>

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers";
 
 test("home renders at phone width with no horizontal scroll", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

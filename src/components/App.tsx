@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { transcript } from "@/client/realtime/reducer";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
 import type { PreviewDTO } from "@/shared/schemas";
+import { DebugPanel } from "./conversation/DebugPanel";
 import { SessionControls } from "./conversation/SessionControls";
 import { SessionTimer } from "./conversation/SessionTimer";
 import { StatusBadge } from "./conversation/StatusBadge";
@@ -16,9 +17,14 @@ import { ErrorNotice } from "./ui/ErrorNotice";
 export function App() {
   const [preview, setPreview] = useState<PreviewDTO | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
-  const { state, audioRef, start, stop, toggleMute, endForCap, sendText, setMode } = useVoiceSession(
-    preview ? { documentId: preview.documentId, title: preview.title } : null,
+  // ?debug=1 shows the latency panel; the server snapshot is false so hydration matches.
+  const debug = useSyncExternalStore(
+    noopSubscribe,
+    () => new URLSearchParams(window.location.search).get("debug") === "1",
+    () => false,
   );
+  const { state, audioRef, start, stop, toggleMute, endForCap, sendText, setMode, controller } =
+    useVoiceSession(preview ? { documentId: preview.documentId, title: preview.title } : null);
   const live = state.status === "live" || state.status === "reconnecting" || state.status === "connecting";
 
   const replace = useCallback(() => {
@@ -93,6 +99,7 @@ export function App() {
                 </p>
               )}
               <Transcript entries={transcript(state)} />
+              {debug && <DebugPanel controller={controller} />}
             </section>
           </>
         )}
@@ -119,3 +126,5 @@ export function App() {
     </div>
   );
 }
+
+const noopSubscribe = () => () => undefined;

@@ -1,6 +1,14 @@
-import { expect, test } from "@playwright/test";
 import { join } from "node:path";
-import { emit, FIXTURES, mockSession, stubMicrophone, uploadFixture, waitForLive } from "./helpers";
+import {
+  emit,
+  FIXTURES,
+  mockSession,
+  stubMicrophone,
+  uploadFixture,
+  waitForLive,
+  expect,
+  test,
+} from "./helpers";
 
 test("upload a PDF, talk, interrupt, mute and stop", async ({ page }) => {
   await stubMicrophone(page);

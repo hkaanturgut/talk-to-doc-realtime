@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { emit, mockSession, stubMicrophone, uploadFixture, waitForLive } from "./helpers";
+import { emit, mockSession, stubMicrophone, uploadFixture, waitForLive, expect, test } from "./helpers";
 
 test("mic denied: explains, switches to text, and answers a typed question", async ({ page }) => {
   // getUserMedia rejects with NotAllowedError (works the same in WebKit and Chromium).

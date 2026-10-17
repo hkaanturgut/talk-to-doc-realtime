@@ -313,7 +313,7 @@ mute and stop.
   - assert upload, preview collapsed/expand, Start, transcript lines streaming, interruption tag,
     mute badge, Stop;
   - run on both mobile projects.
-- [ ] T042 [US1] Update `README.md`: features, local setup (`az login`, `.env.local`), env table,
+- [X] T042 [US1] Update `README.md`: features, local setup (`az login`, `.env.local`), env table,
   deploy (`azd up`), and the Mermaid sequence diagram of the session handshake. Then run quickstart
   M1 to M6 and M12 to M14 on the iPhone and record the results in the PR. (README done; iPhone run is
   an owner task.)
@@ -458,7 +458,7 @@ emulation.
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T062 [P] Write `docs/architecture/diagram.py` (Python `diagrams` 0.25, `Custom` nodes) and
+- [X] T062 [P] Write `docs/architecture/diagram.py` (Python `diagrams` 0.25, `Custom` nodes) and
   `docs/architecture/requirements.txt`, with icons in `docs/architecture/icons/`:
   - Azure Architecture Icons V24 for Container Apps, Foundry, Managed Identity, Key Vault, App
     Insights, Log Analytics and ACR;
@@ -470,30 +470,37 @@ emulation.
   - trust boundaries and where secrets live.
   Render `architecture.svg` and `architecture.png`, record the icon source and terms in
   `docs/architecture/README.md`, and embed the diagram in the README.
-- [ ] T063 [P] Accessibility pass: labels on all controls, focus order, `prefers-reduced-motion`,
+- [X] T063 [P] Accessibility pass: labels on all controls, focus order, `prefers-reduced-motion`,
   contrast AA, and screen-reader announcement of status changes. Add `@axe-core/playwright` checks to
   `tests/e2e/smoke.spec.ts`.
-- [ ] T064 [P] Mobile polish at 390px and 430px: safe areas, keyboard overlap with `TextComposer`,
+- [X] T064 [P] Mobile polish at 390px and 430px: safe areas, keyboard overlap with `TextComposer`,
   tap-highlight, landscape sanity, dark mode via `prefers-color-scheme`. Add a screenshot per state to
   the PR.
-- [ ] T065 [P] Add a latency debug panel, `src/components/conversation/DebugPanel.tsx`, shown with
+- [X] T065 [P] Add a latency debug panel, `src/components/conversation/DebugPanel.tsx`, shown with
   `?debug=1`. It records `performance.now()` marks for `speech_stopped` → `output_audio_buffer.started`
   (reply start, SC-003) and `speech_started` → `output_audio_buffer.cleared` (interrupt stop, SC-004),
   and shows p50/p90 for the session. Unit test the percentile helper.
-- [ ] T066 [P] Write the grounding eval: `docs/eval/questions.md` with 10 questions and expected
+- [X] T066 [P] Write the grounding eval: `docs/eval/questions.md` with 10 questions and expected
   answers for a public-domain sample PDF (source and license noted) plus one captioned YouTube video.
   Run quickstart M16 and M17 and record the results in the PR (SC-005, SC-003, SC-004).
-- [ ] T067 Complete the README:
+- [X] T067 Complete the README:
   - architecture section (diagram, module map, key decisions with links to research.md);
   - trade-offs and limitations: 32k context, truncation, YouTube cloud blocking, in-memory store with
     sticky sessions, per-replica rate limits, client-enforced session cap, static CSP wildcard, no OCR;
   - testing, security model (MI, ephemeral tokens, CSP, rate limits), "How AI tools were used" (Spec
     Kit and Claude Code workflow, what was reviewed by hand), cost notes.
-- [ ] T068 Run the full quickstart (§3 to §5) against the deployed URL and fix any failures. Record
+- [X] T068 Run the full quickstart (§3 to §5) against the deployed URL and fix any failures. Record
   the device matrix (iPhone Safari, Android Chrome, desktop) in the PR.
+  - **Done 2026-10-17 (automated parts)**: §3 all green (lint, typecheck, 243 Vitest, 34 Playwright,
+    gitleaks); §5 on the deployed URL: unknown doc → 404 with no secret, 429 after 10 session calls,
+    spoofed first XFF hop does not bypass, CSP/Permissions-Policy/nosniff/DENY present; desktop Chrome
+    voice + text against Azure OK; YouTube from Azure → `YOUTUBE_BLOCKED` → paste (as designed).
+    **Owner**: §4 on a real iPhone and Android phone.
 - [ ] T069 Pre-submission secret gate. Steps, in order:
   1. Run `gitleaks git -v .` on the full history locally and in CI; it must report 0 findings.
   2. Confirm `git log --format='%ae' | sort -u` shows only the noreply address.
+  - **Done 2026-10-17**: steps 1-2 pass (0 leaks over full history; only the noreply author; no
+    tenant/subscription ids or work emails in any commit). Step 3 waits for the owner.
   3. **Ask the owner**, then make the repository public:
      `gh repo edit --visibility public --accept-visibility-change-consequences`.
 - [ ] T070 Owner task: record the 10 to 15 minute walkthrough. Content: workflow demo on the phone

@@ -43,6 +43,27 @@ fixes were applied afterwards and are logged here. Task IDs in the Fix column re
 | L5 | LOW | Subscription ID in a repo that will be public | Removed from T013 |
 | L6 | LOW | MB vs MiB | "MB = 1,048,576 bytes" stated in spec and data model |
 
-## Pass 2
+## Pass 2 (2026-10-16): verification
 
-See the section below (added after re-running the analysis on the remediated artifacts).
+32 of 34 pass-1 fixes were verified as correct. Two were incomplete and are now fixed: H6 (a leftover
+`LIVE` in T044) and M14 (T028 now uses `foundryLocation`). 13 new findings came up: 0 critical,
+0 high, 2 medium, 11 low. All are fixed:
+
+| ID | Sev | Finding | Fix applied |
+|---|---|---|---|
+| N1 | MED | T018 marked parallel but depends on T020 | `[P]` removed; ordering note in Parallel Opportunities |
+| N2 | MED | Fast reconnect triggers missing from the state machine and plan flow | `offline` and data channel `close` added to both |
+| N3 | LOW | `thinking` sub-state missing in the data model | Added |
+| N4 | LOW | `TOKEN_EXPIRED` message vs surfaced code unclear | Marked internal; a failed retry shows `REALTIME_UNAVAILABLE` |
+| N5 | LOW | `<document>` vs `<reference_material>` | Contract example fixed |
+| N6 | LOW | `DebugPanel`, `docs/eval` missing from the plan tree | Added |
+| N7 | LOW | Plan session response missing `provider`, `sessionMaxSeconds` | Matches the contract |
+| N8 | LOW | FR-024 silent on per-replica counting | Trade-off stated in FR-024 |
+| N9 | LOW | FR-030 out of order | Marked "added in clarification" |
+| N10 | LOW | `X-Frame-Options` missing from R12 | Added |
+| N11 | LOW | No YouTube fetch progress state | "Fetching captions…" in T048 |
+| G1 | LOW | SC-001 not measured | Quickstart M2 times it |
+| G2 | LOW | "Files not stored" (FR-025) untested | Assertion added to T033 |
+
+**Result**: 0 open findings, 0 constitution violations. FR coverage 30/30, SC coverage 10/10, 70
+tasks numbered T001 to T070 with no gaps. Ready for owner approval, then `/speckit-implement`.

@@ -151,7 +151,7 @@ src/
 ├── components/                   # React UI (mobile-first)
 │   ├── source/{SourcePicker,PdfUpload,YouTubeForm,PasteTranscript}.tsx
 │   ├── preview/{DocumentPreview,TruncationNotice}.tsx
-│   └── conversation/{SessionControls,StatusBadge,Transcript,TextComposer,SessionTimer}.tsx
+│   └── conversation/{SessionControls,StatusBadge,Transcript,TextComposer,SessionTimer,DebugPanel}.tsx
 ├── hooks/useVoiceSession.ts      # glues client/realtime to React
 ├── instrumentation.ts            # OTel bootstrap (Node runtime only; must live in src/ with this layout)
 └── shared/                       # isomorphic: types, zod schemas, error codes, messages
@@ -173,6 +173,7 @@ azure.yaml
 Dockerfile
 .github/workflows/{ci.yml,deploy.yml}
 docs/architecture/{diagram.py,requirements.txt,README.md,icons/,architecture.svg,architecture.png}
+docs/eval/questions.md            # grounding eval (SC-005)
 ```
 
 **Structure Decision**: One Next.js project, organized by layer instead of split into separate
@@ -202,7 +203,7 @@ enforced by the import guard and an ESLint `no-restricted-imports` rule.
 2. Client calls `POST /api/session {documentId, mode, history?}`.
 3. Server applies the rate limit, loads the document, and builds the instructions and session config.
 4. `provider.createClientSecret()` gets an Entra token via MI and calls `client_secrets`.
-5. Server returns `{clientSecret, expiresAt, callsUrl, model}`.
+5. Server returns `{clientSecret, expiresAt, callsUrl, model, provider, sessionMaxSeconds}`.
 6. Client creates the `RTCPeerConnection` (mic track, `oai-events` channel), posts the SDP offer to
    `callsUrl` with the bearer secret, and sets the answer as the remote description.
 7. When the data channel opens, the status becomes `live`. The client sends a greeting
@@ -215,7 +216,8 @@ enforced by the import guard and an ESLint `no-restricted-imports` rule.
 4. A new response follows when the user stops speaking.
 
 ### Reconnect
-1. A connection state of `disconnected` (after a 2 s grace period) or `failed` sets the status to
+1. A `window` `offline` event, a data channel `close`, a connection state of `disconnected` (after a
+   2 s grace period), or `failed` sets the status to
    `reconnecting`.
 2. Retries follow the backoff schedule. Each one gets a new token and a new peer connection, and sends
    the last turns as `history`.

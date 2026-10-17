@@ -16,7 +16,7 @@ https://ai.azure.com/.default>` (Azure) or `Bearer <OPENAI_API_KEY>` (OpenAI).
   "session": {
     "type": "realtime",
     "model": "<deployment name | model id>",
-    "instructions": "<system prompt + <document> + <conversation_so_far>>",
+    "instructions": "<system prompt + <reference_material> + <conversation_so_far>>",
     "output_modalities": ["audio"],
     "truncation": "auto",
     "max_output_tokens": 1024,

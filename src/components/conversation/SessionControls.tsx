@@ -6,9 +6,10 @@ interface Props {
   onStart: () => void;
   onStop: () => void;
   onToggleMute: () => void;
+  onSwitchMode: () => void;
 }
 
-export function SessionControls({ state, onStart, onStop, onToggleMute }: Props) {
+export function SessionControls({ state, onStart, onStop, onToggleMute, onSwitchMode }: Props) {
   const busy = state.status === "connecting" || state.status === "requesting_mic";
   const active = state.status === "live" || state.status === "reconnecting" || busy;
   const voice = state.mode === "voice";
@@ -39,6 +40,16 @@ export function SessionControls({ state, onStart, onStop, onToggleMute }: Props)
               : "Start text chat"}
         </button>
       )}
+      <button
+        type="button"
+        onClick={onSwitchMode}
+        disabled={busy}
+        aria-label={voice ? "Type instead" : "Use voice"}
+        title={voice ? "Type instead" : "Use voice"}
+        className="flex min-h-14 min-w-14 items-center justify-center rounded-2xl border border-neutral-300 bg-white disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"
+      >
+        <Icon name={voice ? "keyboard" : "mic"} className="h-6 w-6" />
+      </button>
       {voice && (
         <button
           type="button"

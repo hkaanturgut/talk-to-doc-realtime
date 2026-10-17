@@ -7,6 +7,7 @@ import type { PreviewDTO } from "@/shared/schemas";
 import { SessionControls } from "./conversation/SessionControls";
 import { SessionTimer } from "./conversation/SessionTimer";
 import { StatusBadge } from "./conversation/StatusBadge";
+import { TextComposer } from "./conversation/TextComposer";
 import { Transcript } from "./conversation/Transcript";
 import { DocumentPreview } from "./preview/DocumentPreview";
 import { SourcePicker } from "./source/SourcePicker";
@@ -15,7 +16,7 @@ import { ErrorNotice } from "./ui/ErrorNotice";
 export function App() {
   const [preview, setPreview] = useState<PreviewDTO | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
-  const { state, audioRef, start, stop, toggleMute, endForCap } = useVoiceSession(
+  const { state, audioRef, start, stop, toggleMute, endForCap, sendText, setMode } = useVoiceSession(
     preview ? { documentId: preview.documentId, title: preview.title } : null,
   );
   const live = state.status === "live" || state.status === "reconnecting" || state.status === "connecting";
@@ -83,7 +84,11 @@ export function App() {
               </div>
               {state.error && <ErrorNotice message={state.error.message} />}
               {state.notice && !state.error && (
-                <p role="status" className="text-sm text-neutral-600 dark:text-neutral-300">
+                <p
+                  role="status"
+                  className="rounded-xl bg-neutral-100 px-3 py-2 text-sm text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                  data-testid="notice"
+                >
                   {state.notice}
                 </p>
               )}
@@ -95,7 +100,18 @@ export function App() {
 
       {preview && (
         <div className="sticky bottom-0 border-t border-neutral-200 bg-white/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
-          <SessionControls state={state} onStart={start} onStop={stop} onToggleMute={toggleMute} />
+          <div className="flex flex-col gap-3">
+            {(state.mode === "text" || state.status === "live") && (
+              <TextComposer onSend={sendText} disabled={state.status !== "live"} busy={state.responding} />
+            )}
+            <SessionControls
+              state={state}
+              onStart={start}
+              onStop={stop}
+              onToggleMute={toggleMute}
+              onSwitchMode={() => void setMode(state.mode === "voice" ? "text" : "voice")}
+            />
+          </div>
         </div>
       )}
       {/* Remote model audio. playsInline + autoPlay are required on iOS. */}

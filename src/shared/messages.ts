@@ -34,7 +34,8 @@ export const MESSAGES: Record<ErrorCode, string> = {
   MIC_DENIED:
     "Microphone access was denied, so we switched to text chat. To use voice, allow the microphone for this site (iPhone: Settings → Apps → Safari → Microphone; Android: tap the lock icon → Permissions → Microphone), then reload.",
   MIC_UNAVAILABLE: "No microphone is available, so we switched to text chat.",
-  WEBRTC_UNSUPPORTED: "This browser doesn't support live voice. You can still chat by text.",
+  WEBRTC_UNSUPPORTED:
+    "This browser doesn't support live chat (WebRTC). Try a recent Safari, Chrome, Edge or Firefox.",
   TOKEN_EXPIRED: "Session credential expired, retrying.",
   MIC_LOST: "Microphone changed. Reconnecting audio…",
   CONNECTION_LOST: "Connection lost. Tap Reconnect to continue.",

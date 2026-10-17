@@ -69,7 +69,7 @@ export function useVoiceSession(
     stop: useCallback(() => controller?.stop(), [controller]),
     toggleMute: useCallback(() => controller?.toggleMute(), [controller]),
     sendText: useCallback((text: string) => controller?.sendText(text) ?? false, [controller]),
-    setMode: useCallback((mode: SessionMode) => controller?.setMode(mode), [controller]),
+    setMode: useCallback(async (mode: SessionMode) => controller?.setMode(mode), [controller]),
     endForCap: useCallback(() => controller?.endForCap(), [controller]),
   };
 }

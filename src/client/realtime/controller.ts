@@ -3,6 +3,13 @@ import { MESSAGES } from "@/shared/messages";
 import type { HistoryItem, SessionMode, SessionRequest, SessionResponse } from "@/shared/schemas";
 import type { ConnectFn, ConnectionState, RealtimeConnection, SecretInfo } from "./connection";
 import { parseServerEvent } from "./events";
+import {
+  currentMediaEnv,
+  FALLBACK_TO_TEXT,
+  mapMediaError,
+  preflightVoice,
+  type MediaEnv,
+} from "./mic-errors";
 import { initialState, reducer, transcript, type Action, type SessionState } from "./reducer";
 
 export interface ControllerDeps {
@@ -14,6 +21,7 @@ export interface ControllerDeps {
   audioEl: () => HTMLAudioElement | null;
   now?: () => number;
   initialMode?: SessionMode;
+  mediaEnv?: () => MediaEnv;
 }
 
 const MIC_CONSTRAINTS: MediaStreamConstraints = {
@@ -58,24 +66,41 @@ export class SessionController {
     this.dispatch({ type: "local/error", code, message, status });
   }
 
-  setMode(mode: SessionMode): void {
+  /** Switches voice ⇄ text. An active conversation is restarted in the new mode (transcript kept). */
+  async setMode(mode: SessionMode): Promise<void> {
     if (mode === this.state.mode) return;
     const wasActive = !STARTABLE.has(this.state.status);
-    if (wasActive) this.teardown();
+    if (wasActive) {
+      this.connectSeq++;
+      this.teardown();
+    }
     this.dispatch({ type: "local/mode", mode });
-    if (wasActive) this.dispatch({ type: "local/status", status: "idle" });
+    this.dispatch({ type: "local/status", status: "idle" });
+    if (wasActive) await this.start();
   }
 
   /** Must be called from a tap handler (iOS requires a user gesture for the mic and audio). */
   async start(): Promise<void> {
     if (!STARTABLE.has(this.state.status)) return; // double-tap guard
-    this.dispatch({ type: "local/clear_error" });
+    if (this.state.status !== "idle" || this.state.error) this.dispatch({ type: "local/clear_error" });
     const seq = ++this.connectSeq;
     try {
       if (this.state.mode === "voice") {
         this.dispatch({ type: "local/status", status: "requesting_mic" });
-        this.mic = await this.acquireMic();
+        const micError = await this.tryAcquireMic();
         if (seq !== this.connectSeq) return this.releaseMic();
+        if (micError === "WEBRTC_UNSUPPORTED") {
+          this.fail(micError, "error");
+          return;
+        }
+        if (micError) {
+          // US3: no microphone → same conversation in text mode, with an explanation.
+          this.dispatch({ type: "local/mode", mode: "text" });
+          this.dispatch({ type: "local/notice", notice: MESSAGES[micError] });
+        }
+      } else if (preflightVoice(this.mediaEnv()) === "WEBRTC_UNSUPPORTED") {
+        this.fail("WEBRTC_UNSUPPORTED", "error");
+        return;
       }
       this.dispatch({ type: "local/status", status: "connecting" });
       await this.openConnection(seq);
@@ -86,8 +111,21 @@ export class SessionController {
     }
   }
 
-  protected async acquireMic(): Promise<MediaStream> {
-    return this.deps.getUserMedia(MIC_CONSTRAINTS);
+  protected mediaEnv(): MediaEnv {
+    return (this.deps.mediaEnv ?? currentMediaEnv)();
+  }
+
+  /** Gets the mic, or returns the error code explaining why voice is not possible. */
+  protected async tryAcquireMic(): Promise<ErrorCode | null> {
+    const pre = preflightVoice(this.mediaEnv());
+    if (pre) return pre;
+    try {
+      this.mic = await this.deps.getUserMedia(MIC_CONSTRAINTS);
+      return null;
+    } catch (err) {
+      const code = mapMediaError(err);
+      return FALLBACK_TO_TEXT.has(code) ? code : "MIC_UNAVAILABLE";
+    }
   }
 
   protected handleStartError(err: unknown): void {

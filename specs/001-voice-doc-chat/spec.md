@@ -129,7 +129,7 @@ restore it.
 **Acceptance Scenarios**:
 
 1. **Given** a live session, **When** the connection drops, **Then** the status shows "Reconnecting"
-   within 3 seconds and the app retries automatically with increasing delays.
+   within 5 seconds and the app retries automatically with increasing delays.
 2. **Given** the connection comes back within the retry window, **When** reconnection succeeds,
    **Then** the session resumes with the same document context, the prior transcript is kept, and
    the assistant is made aware of the conversation so far.
@@ -154,7 +154,8 @@ restore it.
   exactly where it was cut, and a visible warning states the percentage of the document used.
 - **Invalid YouTube URL** or a non-YouTube URL: rejected with an example of a valid link.
 - **Video without captions**, private, age-restricted, removed, or a live stream: specific message per
-  case where it can be told apart, plus the paste-transcript option.
+  case where it can be told apart (removed/private vs no captions vs fetch blocked; live streams and
+  age-restricted videos fall into the closest of these), plus the paste-transcript option.
 - **Very long video transcript**: same truncation rule as large PDFs.
 - **Replacing content**: loading a new document while a session is live ends the current session
   after the user confirms, then uses the new document.
@@ -166,8 +167,8 @@ restore it.
   user's tap on "Start Voice Chat".
 - **Bluetooth headset or speaker switch mid-session**: conversation keeps working with the new device
   or shows how to recover.
-- **Upstream service unavailable or rate limited**: user sees "Voice service is busy, try again" and
-  can retry or use text chat.
+- **Upstream service unavailable or rate limited**: user sees "Voice service is busy, try again in a
+  moment" and can retry. (Text chat uses the same service, so it is not offered as the fix here.)
 
 ## Requirements *(mandatory)*
 
@@ -202,14 +203,16 @@ restore it.
 **Voice conversation**
 
 - **FR-012**: Users MUST be able to start a live voice session with a single "Start Voice Chat" action.
-- **FR-013**: Users MUST hear spoken answers with low enough delay to feel conversational.
+- **FR-013**: Users MUST hear spoken answers with low enough delay to feel conversational (see
+  SC-003).
 - **FR-014**: Users MUST be able to interrupt the assistant by speaking; the assistant MUST stop and
   respond to the new input.
 - **FR-015**: The system MUST show a live text transcript of both the user's and the assistant's
   speech, updated as speech happens, with clear speaker labels.
 - **FR-016**: Users MUST be able to mute and unmute their microphone and stop the session at any time.
-- **FR-017**: The system MUST show the session state at all times: idle, connecting, live, assistant
-  speaking, listening, muted, reconnecting, disconnected, error.
+- **FR-017**: The system MUST show the session state at all times: idle, requesting microphone,
+  connecting, live (with sub-states listening, thinking, assistant speaking), reconnecting,
+  disconnected, error. Muted is shown as a separate indicator alongside the state.
 - **FR-018**: The system MUST release the microphone when the session stops or the page is closed.
 - **FR-030**: A voice session MUST end after 15 minutes, with a visible warning at 13 minutes; the
   user can start a new session on the same document.
@@ -250,8 +253,8 @@ restore it.
   used, caption language (YouTube), load time.
 - **Conversation Session**: one live voice or text exchange about a Source Document. Attributes:
   mode (voice or text), state (see FR-017), start time, number of reconnects.
-- **Transcript Entry**: one turn in a session. Attributes: speaker (user or assistant), text, status
-  (in progress, final, interrupted), time.
+- **Transcript Entry**: one turn in a session. Attributes: speaker (user, assistant, or system notice
+  such as "Reconnected"), text, status (in progress, final, interrupted), time.
 
 ## Success Criteria *(mandatory)*
 
@@ -295,3 +298,6 @@ restore it.
   not prevent scaling out.
 - Reviewers use recent iOS Safari and Android Chrome; older browsers without live audio support get
   text chat.
+- "Normal" or "typical" connection in the success criteria means Wi-Fi or 4G/LTE with at least
+  10 Mbps down and under 100 ms round-trip time. "Poor network" means 3G-like or intermittent loss.
+- "MB" means 1,048,576 bytes throughout (so 25 MB = 26,214,400 bytes).

@@ -89,11 +89,15 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
 ## R5. Reconnect and poor network
 
 - **Decision**: Watch `pc.connectionState` and `iceConnectionState`. `disconnected` → 2 s grace period,
-  then reconnect; `failed` or data channel `close` → reconnect now. Backoff 1, 2, 4, 8 s, total window
-  30 s (spec FR-020). Every attempt fetches a **new** ephemeral token and builds a new peer connection.
+  then reconnect; `failed` or data channel `close` → reconnect now. Backoff 1, 2, 4, 8 s, then 8 s
+  repeating, until 30 s after the first drop (spec FR-020). `offline` events and data channel `close`
+  usually fire before ICE `disconnected`, which keeps "Reconnecting" within the 5 s target. Every attempt fetches a **new** ephemeral token and builds a new peer connection.
   Also react to `window` `online`/`offline` and `visibilitychange`.
 - **Context restore**: The client sends the last N finalized transcript turns (capped at ~2,000
   tokens) to `/api/session`, and the server appends them to the instructions as "conversation so far".
+  - History is data from the client, so it is escaped and delimited and the prompt marks it as a
+    record, not instructions (contract template). The model has no tools, so the worst case is an
+    off-topic answer.
   - **Rationale**: Re-injecting assistant turns as `conversation.item.create` with `output_text` is
     unverified in audio sessions; instructions are a documented, predictable path.
 - **Alternatives**: ICE restart on the same peer connection (does not survive ephemeral-key expiry or
@@ -104,7 +108,8 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
 
 - **Decision**: Token estimate = `ceil(chars / 4)` (good enough for English; conservative for code).
   Document budget per provider: Azure 20,000 tokens (~80,000 chars) of the 32k window. That leaves
-  room for instructions (~500), conversation history, and the 4,096 output cap. OpenAI uses a 90,000-token
+  room for instructions (~500), conversation history (≤ 2,000 tokens), and output. The model allows up
+  to 4,096 output tokens; we set `max_output_tokens: 1024` because spoken answers are short. OpenAI uses a 90,000-token
   budget. Text beyond the budget is cut at the last paragraph or sentence boundary before the limit. The
   UI shows "Using 42% of this document (pages 1 to 37)". Session `truncation: "auto"` lets the service
   drop old conversation turns, never instructions.
@@ -120,12 +125,13 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
     ≤ 25 MB, then magic bytes `%PDF-`.
   - **Password-protected**: catch PDF.js `PasswordException` (code 1 or 2) and return
     `PDF_PASSWORD_PROTECTED`.
-  - **Scanned**: fewer than 20 non-whitespace characters per page on average returns
+  - **Scanned**: fewer than 20 non-whitespace characters per page, averaged over all pages, returns
     `PDF_NO_TEXT`.
   - **Corrupt**: any other parse error returns `PDF_INVALID`.
   - **Timeout and cleanup**: extraction races a 20 s timeout, and `pdf.destroy()` is always called.
   - **Normalization**: collapse whitespace, de-hyphenate line ends, keep page breaks as blank lines.
-- **Body limits**: Do **not** add `proxy.ts` (Next 16 middleware). Its `proxyClientMaxBodySize`
+- **Body limits**: The `content-length` precheck allows 25 MB plus 64 KiB of multipart overhead; the
+  exact 25 MB check is on `file.size`. Do **not** add `proxy.ts` (Next 16 middleware). Its `proxyClientMaxBodySize`
   (10 MB default) silently truncates larger bodies. Route handlers have no framework limit, so we
   enforce our own. **VERIFY IN SPIKE**: a 24 MB upload passes ACA ingress.
 - **Alternatives**: `pdf-parse` 2.x (pulls a native canvas binary into Docker, no release in a year);
@@ -146,7 +152,7 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
   3. **Paste transcript** fallback in the UI (always available).
 - **Language choice**: English, then the video's original track, then the first available track; the UI
   shows which language was used. Manual captions are preferred over auto-generated ones.
-- **Metadata**: title and channel from oEmbed (`https://www.youtube.com/oembed?url=...&format=json`, no
+- **Metadata**: zod-validated title and channel from oEmbed (`https://www.youtube.com/oembed?url=...&format=json`, no
   key); duration from the last caption segment's end time.
 - **URL parsing**: `new URL()`. Accepted hosts: `youtube.com`, `www.`, `m.`, `music.`, `youtu.be`,
   `youtube-nocookie.com`. Accepted paths: `/watch?v=`, `youtu.be/ID`, `/shorts/ID`, `/embed/ID`,
@@ -197,9 +203,11 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
   - Container Registry (Basic).
   - Container Apps environment (Consumption) and container app `web`: port 3000, `AZURE_CLIENT_ID` set
     to the identity's client id, sticky sessions, min 1 / max 3 replicas, HTTP scale rule.
-  - Foundry account (`AIServices`, custom subdomain, `disableLocalAuth: true`) with deployments
+  - Foundry account (`AIServices`, custom subdomain, `disableLocalAuth: true`, own `foundryLocation`
+    parameter defaulting to `location`, so it can move to eastus2 alone) with deployments
     `gpt-realtime-2.1` (capacity 10) and `gpt-4o-mini-transcribe` (capacity 50).
-  - Key Vault (RBAC mode), holding optional `supadata-api-key` and `openai-api-key`.
+  - Key Vault (RBAC mode), holding optional `supadata-api-key` and `openai-api-key`. Each is wired to
+    the container app as a Key Vault secret reference only when its parameter flag is on.
   - The deploying user also gets **Cognitive Services OpenAI User** so local `az login` dev works.
 - **CI**: `ci.yml` on PRs runs lint, typecheck, Vitest, `next build`, Playwright (WebKit iPhone and
   Chromium Pixel profiles), and gitleaks via the binary. No license is needed on a personal repo.
@@ -207,9 +215,11 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
   `azd auth login --federated-credential-provider github`, `azd provision`, `azd deploy`.
   Federated credentials and repo variables come from `azd pipeline config` (OIDC, no secrets in
   GitHub). Subject uses the environment claim.
-- **Observability**: `@azure/monitor-opentelemetry` via `instrumentation.ts` (Node runtime only), Entra
-  credential. Custom events: `document_ingested` (type, size, truncated), `session_created`,
-  `session_failed` (error code). Never log document text or tokens.
+- **Observability**: `@azure/monitor-opentelemetry` via `src/instrumentation.ts` (Next requires it
+  inside `src/` with this layout; Node runtime only). Credential is `DefaultAzureCredential`, which
+  picks the user-assigned identity from `AZURE_CLIENT_ID` in Azure and `az login` locally. Custom events: `document_ingested` (type, size, truncated), `session_created`,
+  `session_failed` (error code). Unexpected server errors are recorded as exceptions with route and
+  error code. Never log document text, history, or tokens.
   Microsoft now also offers `@microsoft/opentelemetry`; we chose the long-standing distro with more
   Next.js community examples. **VERIFY IN SPIKE**: Next 16 bundling with `serverExternalPackages`.
 - **Alternatives**: Terraform (azd OIDC pipeline config not supported for Terraform); Static Web Apps
@@ -220,7 +230,10 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
 
 - **Headers**:
   - CSP `default-src 'self'`.
-  - `connect-src 'self'` plus the Foundry endpoint (or `https://api.openai.com`).
+  - `connect-src 'self' https://*.openai.azure.com https://api.openai.com`. This is a static
+    allowlist because `next.config.ts` headers are fixed at build time and the remote Docker build has
+    no endpoint env. A wildcard on the provider's own domain is an acceptable trade-off; a nonce-based
+    runtime CSP would need `proxy.ts`.
   - `media-src 'self' blob:`.
   - `Permissions-Policy: microphone=(self)`.
   - `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
@@ -231,7 +244,12 @@ Each entry: Decision, Rationale, Alternatives considered. Facts were checked aga
   to treat it as reference data, not commands. The model has no tools, so injected text cannot trigger
   actions; the residual risk is off-topic answers, which is documented.
 - **Abuse**: session starts are limited to 10 per minute per IP, and ingest to 20 per minute per IP.
-  The 15-minute session cap bounds cost per session.
+  The client IP is the **last** `x-forwarded-for` entry (appended by the ACA ingress), not the first,
+  which a client can spoof. Limits are per replica (≤ 3), so the effective cap is at most 3x; this is
+  documented, and a shared store (Redis) is the fix if needed.
+  The 15-minute session cap bounds cost per session. It is enforced in the client (not reset by
+  reconnects); a modified client could hold a session up to the service's 60-minute cap. This is
+  documented as a known limitation, since a server-side cap would require relaying the session.
 - **Secrets**: none in the client, none in git; `.env.example` only; gitleaks in CI and before the
   repo goes public.
 

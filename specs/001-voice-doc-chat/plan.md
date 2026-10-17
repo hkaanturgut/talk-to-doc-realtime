@@ -78,6 +78,11 @@ modules.
 | VIII. README-driven, English | README tasks per story; diagram + trade-offs + AI-use notes | PASS |
 | IX. YAGNI | One provider abstraction (azure/openai); OCR deferred; no DB, no state library | PASS |
 
+**Analysis re-check**: the first `/speckit-analyze` pass found five constitution gaps (telemetry
+credential, CI arriving after the first PRs, missing README tasks for US3/US4, no server-error logging,
+no token-expiry path). All five were fixed in the artifacts before approval; see
+[analysis.md](analysis.md).
+
 **Post-design re-check (after Phase 1)**: PASS. Two new interfaces (`TranscriptProvider`,
 `DocumentStore`) are not provider-abstraction creep: each one isolates an external dependency for tests
 (Principle IV) and has a concrete second implementation (Supadata, Redis-ready). Recorded below.
@@ -97,7 +102,8 @@ specs/001-voice-doc-chat/
 │   ├── api.md           # HTTP routes, schemas, error codes
 │   └── realtime-events.md  # session config + data-channel events used
 ├── checklists/requirements.md
-└── tasks.md             # /speckit-tasks
+├── tasks.md             # /speckit-tasks
+└── analysis.md          # /speckit-analyze report + remediation log
 ```
 
 ### Source Code (repository root)
@@ -107,6 +113,7 @@ src/
 ├── app/                          # Next.js App Router (UI shell + route handlers only)
 │   ├── layout.tsx
 │   ├── page.tsx                  # single-screen app: source input → preview → conversation
+│   ├── spike/page.tsx            # TEMPORARY voice spike (T028), gated by SPIKE_ENABLED, deleted in T038
 │   ├── globals.css
 │   └── api/
 │       ├── ingest/pdf/route.ts
@@ -146,12 +153,12 @@ src/
 │   ├── preview/{DocumentPreview,TruncationNotice}.tsx
 │   └── conversation/{SessionControls,StatusBadge,Transcript,TextComposer,SessionTimer}.tsx
 ├── hooks/useVoiceSession.ts      # glues client/realtime to React
+├── instrumentation.ts            # OTel bootstrap (Node runtime only; must live in src/ with this layout)
 └── shared/                       # isomorphic: types, zod schemas, error codes, messages
     ├── schemas.ts
     ├── errors.ts
     └── messages.ts
 
-instrumentation.ts                # OTel bootstrap (Node runtime only)
 tests/
 ├── unit/
 ├── integration/
@@ -165,7 +172,7 @@ infra/
 azure.yaml
 Dockerfile
 .github/workflows/{ci.yml,deploy.yml}
-docs/architecture/{diagram.py,requirements.txt,icons/,architecture.svg,architecture.png}
+docs/architecture/{diagram.py,requirements.txt,README.md,icons/,architecture.svg,architecture.png}
 ```
 
 **Structure Decision**: One Next.js project, organized by layer instead of split into separate

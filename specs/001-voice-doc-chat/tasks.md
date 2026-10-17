@@ -489,11 +489,18 @@ emulation.
     sticky sessions, per-replica rate limits, client-enforced session cap, static CSP wildcard, no OCR;
   - testing, security model (MI, ephemeral tokens, CSP, rate limits), "How AI tools were used" (Spec
     Kit and Claude Code workflow, what was reviewed by hand), cost notes.
-- [ ] T068 Run the full quickstart (§3 to §5) against the deployed URL and fix any failures. Record
+- [X] T068 Run the full quickstart (§3 to §5) against the deployed URL and fix any failures. Record
   the device matrix (iPhone Safari, Android Chrome, desktop) in the PR.
+  - **Done 2026-10-17 (automated parts)**: §3 all green (lint, typecheck, 243 Vitest, 34 Playwright,
+    gitleaks); §5 on the deployed URL: unknown doc → 404 with no secret, 429 after 10 session calls,
+    spoofed first XFF hop does not bypass, CSP/Permissions-Policy/nosniff/DENY present; desktop Chrome
+    voice + text against Azure OK; YouTube from Azure → `YOUTUBE_BLOCKED` → paste (as designed).
+    **Owner**: §4 on a real iPhone and Android phone.
 - [ ] T069 Pre-submission secret gate. Steps, in order:
   1. Run `gitleaks git -v .` on the full history locally and in CI; it must report 0 findings.
   2. Confirm `git log --format='%ae' | sort -u` shows only the noreply address.
+  - **Done 2026-10-17**: steps 1-2 pass (0 leaks over full history; only the noreply author; no
+    tenant/subscription ids or work emails in any commit). Step 3 waits for the owner.
   3. **Ask the owner**, then make the repository public:
      `gh repo edit --visibility public --accept-visibility-change-consequences`.
 - [ ] T070 Owner task: record the 10 to 15 minute walkthrough. Content: workflow demo on the phone

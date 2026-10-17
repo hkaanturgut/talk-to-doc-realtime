@@ -53,7 +53,8 @@ export type LocalAction =
   | { type: "local/notice"; notice?: string }
   | { type: "local/system"; id: string; text: string; now: number }
   | { type: "local/clear_error" }
-  | { type: "local/reset_transcript" };
+  | { type: "local/reset_transcript" }
+  | { type: "local/new_session" };
 
 export type Action = LocalAction | { type: "server"; event: ServerEvent; now: number };
 
@@ -228,6 +229,8 @@ export function reducer(state: SessionState, action: Action): SessionState {
       };
     case "local/reset_transcript":
       return { ...initialState(state.mode) };
+    case "local/new_session":
+      return { ...state, startedAt: undefined, capEndsAt: undefined };
   }
 }
 

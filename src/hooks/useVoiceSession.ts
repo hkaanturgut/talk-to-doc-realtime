@@ -41,12 +41,27 @@ export function useVoiceSession(
 
   useEffect(() => () => controller?.dispose(), [controller]);
 
-  // Release the microphone when the page goes away (iOS keeps the mic indicator otherwise).
+  // Browser events: release the mic on pagehide (iOS keeps the indicator otherwise), reconnect on
+  // network changes, pause after a long background period, and swap the mic on device changes.
   useEffect(() => {
     if (!controller) return;
     const onHide = () => controller.stop();
+    const onOffline = () => controller.onOffline();
+    const onOnline = () => controller.onOnline();
+    const onVisibility = () => controller.onVisibilityChange(document.visibilityState === "hidden");
+    const onDevice = () => controller.onDeviceChange();
     window.addEventListener("pagehide", onHide);
-    return () => window.removeEventListener("pagehide", onHide);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisibility);
+    navigator.mediaDevices?.addEventListener?.("devicechange", onDevice);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisibility);
+      navigator.mediaDevices?.removeEventListener?.("devicechange", onDevice);
+    };
   }, [controller]);
 
   const state = useSyncExternalStore(

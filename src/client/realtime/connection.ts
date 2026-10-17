@@ -1,6 +1,7 @@
 import { AppError } from "@/shared/errors";
 import type { SessionMode } from "@/shared/schemas";
 
+/** `disconnected` = ICE disconnected (may recover); `failed` = ICE failed or data channel closed. */
 export type ConnectionState = "connecting" | "open" | "disconnected" | "failed" | "closed";
 
 export interface RealtimeConnection {
@@ -92,7 +93,7 @@ export const connect: ConnectFn = async (opts) => {
     for (const cb of eventListeners) cb(typeof e.data === "string" ? e.data : "");
   };
   dc.onopen = () => setState("open");
-  dc.onclose = () => setState(closed ? "closed" : "disconnected");
+  dc.onclose = () => setState(closed ? "closed" : "failed");
 
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === "failed") setState("failed");

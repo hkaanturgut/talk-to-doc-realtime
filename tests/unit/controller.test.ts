@@ -1,82 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectFn, ConnectionState, RealtimeConnection } from "@/client/realtime/connection";
-import { SessionController, type ControllerDeps } from "@/client/realtime/controller";
-import type { SessionResponse } from "@/shared/schemas";
-
-const session: SessionResponse = {
-  clientSecret: "ek_1",
-  expiresAt: 1,
-  callsUrl: "https://x/calls",
-  model: "m",
-  provider: "azure",
-  sessionMaxSeconds: 900,
-};
-
-export function fakeTransport() {
-  const conns: {
-    sent: Record<string, unknown>[];
-    state: (s: ConnectionState) => void;
-    emit: (e: object) => void;
-    closed: boolean;
-  }[] = [];
-  const connect: ConnectFn = vi.fn(async () => {
-    let stateCb: (s: ConnectionState) => void = () => undefined;
-    let eventCb: (d: string) => void = () => undefined;
-    const rec = {
-      sent: [] as Record<string, unknown>[],
-      state: (s: ConnectionState) => stateCb(s),
-      emit: (e: object) => eventCb(JSON.stringify(e)),
-      closed: false,
-    };
-    conns.push(rec);
-    const conn: RealtimeConnection = {
-      send: (e) => void rec.sent.push(e),
-      onEvent: (cb) => {
-        eventCb = cb;
-        return () => undefined;
-      },
-      onStateChange: (cb) => {
-        stateCb = cb;
-        return () => undefined;
-      },
-      replaceMicTrack: vi.fn(async () => undefined),
-      close: () => void (rec.closed = true),
-    };
-    return conn;
-  });
-  return { connect, conns };
-}
-
-function fakeTrack() {
-  return { enabled: true, stop: vi.fn(), readyState: "live", kind: "audio" } as unknown as MediaStreamTrack;
-}
-
-export function fakeStream(track = fakeTrack()) {
-  return { getAudioTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream;
-}
-
-export function makeController(overrides: Partial<ControllerDeps> = {}) {
-  const transport = fakeTransport();
-  const fetchSession = vi.fn(async () => session);
-  const controller = new SessionController({
-    documentId: "00000000-0000-4000-8000-000000000000",
-    title: "Doc",
-    fetchSession,
-    connect: transport.connect,
-    getUserMedia: vi.fn(async () => fakeStream()),
-    audioEl: () => null,
-    mediaEnv: () => ({ isSecureContext: true, hasMediaDevices: true, hasPeerConnection: true }),
-    ...overrides,
-  });
-  return { controller, transport, fetchSession };
-}
+import { fakeStream, fakeTrack, makeController } from "../support/controller";
 
 describe("SessionController", () => {
   it("starts voice, goes live on open, and sends the greeting once", async () => {
     const { controller, transport } = makeController();
-    await controller.start();
-    expect(controller.getState().status).toBe("connecting");
-    transport.conns[0]!.state("open");
+    const started = controller.start();
+    expect(controller.getState().status).toBe("requesting_mic");
+    await started;
     expect(controller.getState().status).toBe("live");
     expect(transport.conns[0]!.sent.filter((e) => e.type === "response.create")).toHaveLength(1);
   });
@@ -118,7 +48,6 @@ describe("SessionController", () => {
     const { controller, transport } = makeController({ getUserMedia: vi.fn(async () => fakeStream(track)) });
     await controller.start();
     const conn = transport.conns[0]!;
-    conn.state("open");
     conn.emit({ type: "response.created", response: { id: "r1" } });
     controller.stop();
     expect(conn.sent.map((e) => e.type)).toEqual(
@@ -133,7 +62,6 @@ describe("SessionController", () => {
     const track = fakeTrack();
     const { controller, transport } = makeController({ getUserMedia: vi.fn(async () => fakeStream(track)) });
     await controller.start();
-    transport.conns[0]!.state("open");
     controller.toggleMute();
     expect(track.enabled).toBe(false);
     expect(controller.getState().muted).toBe(true);
@@ -144,7 +72,6 @@ describe("SessionController", () => {
   it("sendText sends an input_text item plus response.create", async () => {
     const { controller, transport } = makeController({ initialMode: "text" });
     await controller.start();
-    transport.conns[0]!.state("open");
     expect(controller.sendText("  hello  ")).toBe(true);
     const sent = transport.conns[0]!.sent.slice(-2);
     expect(sent[0]).toMatchObject({
@@ -158,16 +85,14 @@ describe("SessionController", () => {
   it("switching mode while live restarts the session in the new mode", async () => {
     const { controller, transport, fetchSession } = makeController();
     await controller.start();
-    transport.conns[0]!.state("open");
     await controller.setMode("text");
     expect(transport.conns[0]!.closed).toBe(true);
     expect(fetchSession).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "text" }));
   });
 
   it("endForCap stops with SESSION_CAP", async () => {
-    const { controller, transport } = makeController();
+    const { controller } = makeController();
     await controller.start();
-    transport.conns[0]!.state("open");
     controller.endForCap();
     expect(controller.getState().status).toBe("disconnected");
     expect(controller.getState().error?.code).toBe("SESSION_CAP");

@@ -83,6 +83,26 @@ az keyvault secret set --vault-name "$(azd env get-value AZURE_KEY_VAULT_NAME)" 
 azd env set ENABLE_SUPADATA true && azd provision
 ```
 
+### Poor networks, background and device changes
+
+| Situation                                                     | Behavior                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Network drop (offline event, data channel closed, ICE failed) | Status shows **Reconnecting** at once. Each retry gets a fresh secret and a new peer connection, after 1, 2, 4, 8, then 8 s. The last turns (≤ 40, ≤ 8,000 chars) go back to the model as escaped history, so the conversation continues. |
+| ICE `disconnected`                                            | 2 s grace period first, since it often recovers on its own                                                                                                                                                                                |
+| Network back (`online`)                                       | Retries immediately instead of waiting for the next backoff step                                                                                                                                                                          |
+| Still down after 30 s                                         | **Disconnected**, with a Reconnect button and the transcript kept. Text mode stays available.                                                                                                                                             |
+| Document expired during a reconnect                           | "This document has expired. Load it again to continue."                                                                                                                                                                                   |
+| App in the background for more than 30 s                      | The session ends cleanly; on return you see "Session paused while the app was in the background". Shorter periods are left alone.                                                                                                         |
+| Microphone removed (e.g. Bluetooth headset off)               | The mic is re-acquired and swapped in with `RTCRtpSender.replaceTrack` (no renegotiation). If that fails, the app switches to text.                                                                                                       |
+| 15-minute cap                                                 | Countdown in the last 2 minutes, then the session ends. Reconnects do not reset it.                                                                                                                                                       |
+
+Known limitations:
+
+- The 15-minute cap is enforced by the client. A modified client could keep a session up to the
+  service's own 60-minute limit; enforcing it on the server would mean relaying the media.
+- Rate limits (10 sessions and 20 ingests per minute per IP) are kept in memory **per replica**, so the
+  effective limit is up to 3x with 3 replicas. A shared store (Redis) is the fix if it matters.
+
 ## Architecture
 
 ```mermaid

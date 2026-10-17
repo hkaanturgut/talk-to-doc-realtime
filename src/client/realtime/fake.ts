@@ -9,6 +9,8 @@ export interface FakeRealtimeHandle {
   sent: Record<string, unknown>[];
   connects: number;
   failNext?: boolean;
+  /** Every connect fails while true (give-up path). */
+  failAll?: boolean;
 }
 
 declare global {
@@ -31,7 +33,7 @@ export function installFakeRealtime(): FakeRealtimeHandle {
     },
     connect: async () => {
       handle.connects += 1;
-      if (handle.failNext) {
+      if (handle.failNext || handle.failAll) {
         handle.failNext = false;
         throw new Error("fake connect failure");
       }

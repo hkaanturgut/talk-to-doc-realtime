@@ -392,21 +392,21 @@ to paste, as documented.
 
 **Independent Test**: quickstart M9; Playwright with mic permission denied.
 
-- [ ] T052 [US3] Extend `src/hooks/useVoiceSession.ts` to map `getUserMedia` errors:
+- [X] T052 [US3] Extend `src/hooks/useVoiceSession.ts` to map `getUserMedia` errors:
   - `NotAllowedError` becomes `MIC_DENIED`; `NotFoundError` or an insecure context becomes
     `MIC_UNAVAILABLE`; missing `RTCPeerConnection` becomes `WEBRTC_UNSUPPORTED`;
   - on any of these, auto-switch to `mode: "text"` with the explanation from `messages.ts`, including
     iOS steps (Settings → Safari → Microphone);
   - add a manual "Type instead" toggle.
   Unit tests in `tests/unit/mic-errors.test.ts`.
-- [ ] T053 [US3] Build `src/components/conversation/TextComposer.tsx` (input above the keyboard with
+- [X] T053 [US3] Build `src/components/conversation/TextComposer.tsx` (input above the keyboard with
   `enterkeyhint="send"`, disabled while a response streams, visible in both modes per US3 scenario 3).
   Wire `sendText()` to `conversation.item.create` (`input_text`) plus `response.create`, rendering
   `response.output_text.delta`.
-- [ ] T054 [US3] Write the Playwright e2e test `tests/e2e/text-fallback.spec.ts` (Chromium:
+- [X] T054 [US3] Write the Playwright e2e test `tests/e2e/text-fallback.spec.ts` (Chromium:
   `permissions: []` so the mic is denied; WebKit: stub `getUserMedia` to reject). Assert the
   explanation, text mode, typed question and streamed answer from the fake connection.
-- [ ] T055 [US3] Update `README.md`: text mode, when it switches on automatically, and how to re-enable
+- [X] T055 [US3] Update `README.md`: text mode, when it switches on automatically, and how to re-enable
   the mic on iOS and Android (Constitution VIII).
 
 **Checkpoint**: The app is useful without a microphone.

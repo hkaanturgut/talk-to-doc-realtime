@@ -23,8 +23,30 @@ Interrupt the assistant at any time by talking over it.
   both sides, mute, stop, and a 15-minute session cap.
 - **Clear errors** for every edge case: password-protected, scanned/image-only, corrupt, oversized and
   non-PDF files; expired documents; busy voice service.
+- **Text chat fallback**: the same Realtime session in text mode when the microphone is denied or
+  missing, or when you tap the keyboard button. You can also type in a voice session.
 - **Long documents** are cut at a paragraph or sentence boundary to fit the model's context, with a
   visible "Using 42% of this document (pages 1 to 37)" notice.
+
+### Text mode
+
+The app switches to text automatically, with an explanation, when:
+
+| Situation                          | What you see                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------- |
+| Microphone permission denied       | "Microphone access was denied, so we switched to text chat", plus how to re-enable it |
+| No microphone, or a non-HTTPS page | "No microphone is available, so we switched to text chat"                             |
+| Browser without WebRTC             | A message to use a recent browser (text mode also uses WebRTC)                        |
+
+Text mode uses the same model and session with `output_modalities: ["text"]`, no turn detection,
+and a receive-only audio transceiver, so no microphone is needed.
+
+To turn the microphone back on:
+
+- **iPhone (Safari)**: Settings → Apps → Safari → Microphone → Allow, or tap **aA** in the address bar
+  → Website Settings → Microphone. Then reload.
+- **Android (Chrome)**: tap the lock or tune icon in the address bar → Permissions → Microphone →
+  Allow. Then reload.
 
 ## Architecture
 

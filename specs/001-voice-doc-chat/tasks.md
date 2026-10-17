@@ -27,22 +27,22 @@ routes, and Playwright mobile tests for critical flows. Write each test first an
 
 **Purpose**: Runnable, linted, tested empty app.
 
-- [ ] T001 Scaffold the Next.js 16.4 App Router app with TypeScript 6.0 (`strict: true`,
+- [X] T001 Scaffold the Next.js 16.4 App Router app with TypeScript 6.0 (`strict: true`,
   `noUncheckedIndexedAccess: true`), Tailwind CSS 4.3, `output: "standalone"`, and Node 24 `engines`.
   Files: `package.json`, `tsconfig.json`, `next.config.ts`, `src/app/layout.tsx`, `src/app/page.tsx`,
   `src/app/globals.css`. Add `.nvmrc` (24).
-- [ ] T002 [P] Configure ESLint flat config, including `no-restricted-imports`: `src/client`,
+- [X] T002 [P] Configure ESLint flat config, including `no-restricted-imports`: `src/client`,
   `src/components` and `src/hooks` may not import `src/server`. Add Prettier and `npm run lint`,
   `npm run typecheck`, `npm run format`. Files: `eslint.config.mjs`, `.prettierrc`.
-- [ ] T003 [P] Configure Vitest 5 (node environment for `tests/unit` and `tests/integration`, jsdom for
+- [X] T003 [P] Configure Vitest 5 (node environment for `tests/unit` and `tests/integration`, jsdom for
   component tests) with a smoke test. Files: `vitest.config.ts`, `tests/unit/smoke.test.ts`.
-- [ ] T004 [P] Configure Playwright 1.64 with `iPhone 15` (WebKit) and `Pixel 7` (Chromium) projects
+- [X] T004 [P] Configure Playwright 1.64 with `iPhone 15` (WebKit) and `Pixel 7` (Chromium) projects
   and a `webServer` that runs `next start`. Add a smoke test that loads `/` at 390px with no horizontal
   scroll. Files: `playwright.config.ts`, `tests/e2e/smoke.spec.ts`.
-- [ ] T005 [P] Add `GET /api/health` returning `{status:"ok", version}` (version from `GIT_SHA` env)
+- [X] T005 [P] Add `GET /api/health` returning `{status:"ok", version}` (version from `GIT_SHA` env)
   in `src/app/api/health/route.ts`, plus an integration test in `tests/integration/health.test.ts`.
 
-- [ ] T006 Commit `.github/workflows/ci.yml` (on PR and push to `main`): `npm ci`, lint, typecheck,
+- [X] T006 Commit `.github/workflows/ci.yml` (on PR and push to `main`): `npm ci`, lint, typecheck,
   `npm test`, `next build`. Then add these four as required status checks on `main`, so from here on
   every change lands through a PR with passing checks (Constitution VII).
 

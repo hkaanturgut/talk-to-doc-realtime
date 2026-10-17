@@ -12,6 +12,24 @@ extracted text in a collapsible preview, use it as context for a live spoken con
 interruptions and a live transcript, fall back to text chat without a microphone, and keep all
 credentials off the client."
 
+## Clarifications
+
+### Session 2026-10-16
+
+Answered by the owner's delegate using best-practice defaults (owner asked for assumptions instead of
+questions). Items that are really the client's call are also raised with Genius in Slack.
+
+- Q: How long is a loaded document kept, and does it survive a page reload? → A: Kept in server
+  memory for 60 minutes after last use; a page reload starts fresh (no persistence).
+- Q: Is there a maximum length for one voice session? → A: Yes, 15 minutes per session, with a
+  warning at 13 minutes; the user can start a new session on the same document.
+- Q: How long does the app keep retrying after a connection drop? → A: Up to 30 seconds with
+  backoff (about 1, 2, 4, 8 seconds), then show "Disconnected" with a manual "Reconnect".
+- Q: How many voice sessions can one visitor start in a short time? → A: At most 10 session
+  starts per minute per client; more returns "Too many attempts, wait a moment".
+- Q: In the hosted app, where do YouTube captions come from if direct fetching is blocked? → A: Try
+  direct fetch first, then an optional configured caption provider, then offer paste-transcript.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Talk to a PDF by voice on a phone (Priority: P1)
@@ -164,8 +182,8 @@ restore it.
   on the server and use them as the transcript.
 - **FR-004**: The system MUST accept YouTube URLs in standard, short, Shorts, embed, and mobile
   formats, with or without extra parameters.
-- **FR-005**: When captions cannot be fetched automatically, users MUST be able to paste a transcript
-  manually and continue.
+- **FR-005**: Caption fetching MUST try a direct fetch first, then an optional configured caption
+  provider. When both fail, users MUST be able to paste a transcript manually and continue.
 - **FR-006**: The system MUST show the extracted text in a collapsible preview, collapsed by default,
   with source name, size (pages or duration), and character or word count.
 - **FR-007**: The system MUST validate inputs and show a specific, actionable message for each edge
@@ -193,13 +211,15 @@ restore it.
 - **FR-017**: The system MUST show the session state at all times: idle, connecting, live, assistant
   speaking, listening, muted, reconnecting, disconnected, error.
 - **FR-018**: The system MUST release the microphone when the session stops or the page is closed.
+- **FR-030**: A voice session MUST end after 15 minutes, with a visible warning at 13 minutes; the
+  user can start a new session on the same document.
 
 **Fallback and resilience**
 
 - **FR-019**: The system MUST offer text chat when the microphone is unavailable or denied, and as a
   user choice at any time.
-- **FR-020**: The system MUST detect connection loss, show it, and retry automatically for a bounded
-  time, then let the user reconnect manually.
+- **FR-020**: The system MUST detect connection loss, show it, and retry automatically with backoff
+  for up to 30 seconds, then let the user reconnect manually.
 - **FR-021**: After reconnecting, the system MUST keep the document context and the transcript.
 - **FR-022**: The system MUST renew session credentials when they expire without exposing any
   long-lived credential to the user's device.
@@ -208,10 +228,10 @@ restore it.
 
 - **FR-023**: No long-lived credential or secret MUST ever be sent to or stored on the user's device;
   the device only receives short-lived, single-session access.
-- **FR-024**: The system MUST limit session-credential issuance to protect against abuse (e.g. a
-  per-client rate limit).
-- **FR-025**: Uploaded files and extracted text MUST be kept only in memory or lightweight temporary
-  storage and MUST NOT be kept longer than needed for the session.
+- **FR-024**: The system MUST limit session starts to 10 per minute per client and MUST show a
+  "Too many attempts" message beyond that.
+- **FR-025**: Uploaded files MUST NOT be stored after extraction. Extracted text MUST be kept only in
+  server memory and discarded 60 minutes after last use. Nothing persists across a page reload.
 - **FR-026**: The system MUST NOT require user accounts or sign-in.
 
 **Interface**
@@ -270,7 +290,7 @@ restore it.
 - YouTube captions from the deployed (cloud) environment may be blocked by YouTube; a local demo plus
   a documented paste-transcript fallback meets the requirement, and working deployed fetching is a
   bonus.
-- Sessions and documents live only as long as the visitor's session; nothing is retained after.
+- Documents live in server memory for 60 minutes after last use; nothing is retained after.
 - Expected load is a small number of reviewers at once, not public-scale traffic, but the design must
   not prevent scaling out.
 - Reviewers use recent iOS Safari and Android Chrome; older browsers without live audio support get

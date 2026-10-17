@@ -23,6 +23,9 @@ Interrupt the assistant at any time by talking over it.
   both sides, mute, stop, and a 15-minute session cap.
 - **Clear errors** for every edge case: password-protected, scanned/image-only, corrupt, oversized and
   non-PDF files; expired documents; busy voice service.
+- **YouTube**: paste any youtube.com, youtu.be, Shorts, embed or live link (`&t=`, `&list=`, `si=`
+  are fine). Captions become the document, with title, duration and caption language in the
+  preview. If captions can't be fetched, the app offers **Paste transcript** instead.
 - **Text chat fallback**: the same Realtime session in text mode when the microphone is denied or
   missing, or when you tap the keyboard button. You can also type in a voice session.
 - **Long documents** are cut at a paragraph or sentence boundary to fit the model's context, with a
@@ -47,6 +50,38 @@ To turn the microphone back on:
   → Website Settings → Microphone. Then reload.
 - **Android (Chrome)**: tap the lock or tune icon in the address bar → Permissions → Microphone →
   Allow. Then reload.
+
+### YouTube in the hosted app
+
+YouTube blocks most cloud and datacenter IPs from reading captions: the player answers
+`LOGIN_REQUIRED` / "confirm you're not a bot", or 429. Azure egress is affected. The app therefore
+uses a **provider chain** (`src/server/ingestion/youtube/`):
+
+| Order | Provider                                            | Where it works                 | Notes                                                                                     |
+| ----- | --------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
+| 1     | `direct` (`youtube-transcript-plus`, Innertube API) | locally and on residential IPs | free; usually blocked in Azure                                                            |
+| 2     | `supadata` (caption API)                            | anywhere                       | optional: set `ENABLE_SUPADATA=true` and store the key in Key Vault as `supadata-api-key` |
+| 3     | **Paste transcript** (UI)                           | always                         | YouTube → description → _Show transcript_ → copy → paste                                  |
+
+Definitive answers stop the chain (no captions, private or removed video). Blocked or transient
+failures move on to the next provider, and when all fail the UI switches to the paste tab with an
+explanation.
+
+Trade-offs considered:
+
+| Option                            | Cost                           | Why not the default                                 |
+| --------------------------------- | ------------------------------ | --------------------------------------------------- |
+| Residential proxy (e.g. Webshare) | about $3.50/GB plus a secret   | another moving part; still hit by PoToken checks    |
+| Caption API (Supadata)            | free tier 100/month, then paid | third-party dependency; wired in but off by default |
+| Paste transcript                  | free                           | one extra step for the user, but always works       |
+
+To enable Supadata on Azure:
+
+```bash
+az keyvault secret set --vault-name "$(azd env get-value AZURE_KEY_VAULT_NAME)" \
+  --name supadata-api-key --value "<key>"
+azd env set ENABLE_SUPADATA true && azd provision
+```
 
 ## Architecture
 

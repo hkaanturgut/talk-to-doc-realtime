@@ -26,7 +26,7 @@ via the `useVoiceSession` reducer. Types are defined once as zod schemas in `src
 | `createdAt` / `lastUsedAt` | number (epoch ms) | `lastUsedAt` refreshed on every read |
 
 **Limits**:
-- PDF upload ≤ 25 MB (26,214,400 bytes).
+- PDF upload ≤ 25 MB (26,214,400 bytes; MB = 1,048,576 bytes everywhere).
 - Pasted text ≤ 400,000 chars.
 - `contextText` ≤ document budget (Azure 80,000 chars ≈ 20k tokens; OpenAI 360,000 chars ≈ 90k
   tokens).
@@ -50,8 +50,8 @@ truncation happened.
 | `status` | see state machine | |
 | `muted` | boolean | voice only |
 | `startedAt` | number? | set when status first becomes `live` |
-| `capEndsAt` | number? | `startedAt + 15 min`; warning at `capEndsAt - 2 min` |
-| `reconnectAttempt` | number | 0 to 4 |
+| `capEndsAt` | number? | `startedAt + sessionMaxSeconds` (900 s from `/api/session`); warning at `capEndsAt - 2 min`; **not reset by reconnects** |
+| `reconnectAttempt` | number | 0 and up; delays 1, 2, 4, 8, 8, 8... s until `reconnectDeadline` |
 | `reconnectDeadline` | number? | first drop + 30 s |
 | `error` | `{ code: ErrorCode, message: string }?` | last fatal error |
 
@@ -88,5 +88,6 @@ Rules:
 | `order` | number | position in the conversation, assigned from `conversation.item.added` (`previous_item_id`), so late user transcripts land before the assistant reply that followed them |
 | `at` | number | epoch ms of first delta |
 
-**History for reconnect**: the last finalized `user` and `assistant` entries, newest first, up to
-8,000 chars total. They are sent as `history: [{speaker, text}]` in the `/api/session` request.
+**History for reconnect**: the most recent finalized `user` and `assistant` entries, at most 40 items
+and 8,000 chars total (oldest dropped first), sent in chronological order (oldest first) as
+`history: [{speaker, text}]` in the `/api/session` request.

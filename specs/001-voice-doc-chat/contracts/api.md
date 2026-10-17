@@ -45,18 +45,18 @@ Errors always use this shape:
 | Code | Status | Notes |
 |---|---|---|
 | `YOUTUBE_INVALID_URL` | 400 | |
-| `YOUTUBE_UNAVAILABLE` | 404 | private, removed, or age-restricted |
-| `YOUTUBE_NO_CAPTIONS` | 422 | |
-| `YOUTUBE_LIVE` | 422 | |
-| `YOUTUBE_BLOCKED` | 502 | all providers blocked; UI offers paste |
+| `YOUTUBE_UNAVAILABLE` | 404 | private or removed |
+| `YOUTUBE_NO_CAPTIONS` | 422 | includes live streams and premieres |
+| `YOUTUBE_BLOCKED` | 502 | all providers blocked or sign-in required (also covers age-restricted); UI offers paste |
 | `RATE_LIMITED` | 429 | |
+| `INVALID_REQUEST` | 400 | body fails schema |
 
 ## POST /api/ingest/text
 
 - **Request**: `{ "title"?: string (≤ 200), "text": string (1 to 400,000 chars), "sourceUrl"?: string }`.
   Used for the paste-transcript fallback.
 - **200 Response**: `PreviewDTO` with `kind: "text"`.
-- **Errors**: `TEXT_EMPTY` 400, `TEXT_TOO_LARGE` 413, `RATE_LIMITED` 429.
+- **Errors**: `TEXT_EMPTY` 400, `TEXT_TOO_LARGE` 413, `RATE_LIMITED` 429, `INVALID_REQUEST` 400.
 
 ## POST /api/session
 
@@ -70,7 +70,8 @@ Errors always use this shape:
 }
 ```
 
-`history` is optional, holds at most 40 items, and is capped at 8,000 chars in total.
+`history` is optional, holds at most 40 items, and is capped at 8,000 chars in total. Items are in
+chronological order (oldest first); when capping, the client drops the oldest items.
 
 - **200 Response**:
 
@@ -85,12 +86,16 @@ Errors always use this shape:
 }
 ```
 
-- **Errors**: `DOCUMENT_NOT_FOUND` 404, `RATE_LIMITED` 429, `REALTIME_UNAVAILABLE` 503 (upstream 5xx
-  or 429), `REALTIME_AUTH` 500 (identity or role misconfigured; logged, generic message to the user).
+- **Errors**: `INVALID_REQUEST` 400, `DOCUMENT_NOT_FOUND` 404, `RATE_LIMITED` 429,
+  `REALTIME_UNAVAILABLE` 503 (upstream 5xx or 429), `REALTIME_AUTH` 500 (identity or role
+  misconfigured; logged, generic message to the user).
 - **Guarantees**:
   - The response never contains an Entra token or API key.
   - `clientSecret` TTL is 120 s.
   - The instructions are built on the server only; the client can't send instructions.
+    `history` is inserted only as escaped, delimited data inside `<conversation_so_far>`, with a guard
+    line telling the model it is a record, not instructions (see the template in
+    [realtime-events.md](realtime-events.md)).
 
 ## GET /api/health
 
@@ -103,6 +108,8 @@ Every code maps to a user-facing message in `src/shared/messages.ts` (spec FR-00
 
 | Code | Spec edge case | User message (summary) | Retryable |
 |---|---|---|---|
+| `INVALID_REQUEST` | malformed body (zod failure) | request could not be read | no |
+| `PDF_MISSING` | no file in upload | choose a PDF first | no |
 | `PDF_TOO_LARGE` | PDF over 25 MB | size + limit | no |
 | `PDF_NOT_PDF` | not a PDF | "This file is not a valid PDF" | no |
 | `PDF_PASSWORD_PROTECTED` | password PDF | upload an unprotected copy | no |
@@ -110,17 +117,18 @@ Every code maps to a user-facing message in `src/shared/messages.ts` (spec FR-00
 | `PDF_INVALID` | corrupt | file could not be read | no |
 | `PDF_TIMEOUT` | very complex PDF | took too long, try a smaller file | yes |
 | `YOUTUBE_INVALID_URL` | invalid URL | example of a valid link | no |
-| `YOUTUBE_NO_CAPTIONS` | no captions | no captions, paste transcript instead | no |
-| `YOUTUBE_UNAVAILABLE` | private/removed/age-restricted | video not available | no |
-| `YOUTUBE_LIVE` | live stream | live streams not supported | no |
-| `YOUTUBE_BLOCKED` | hosted fetch blocked | could not fetch here, paste transcript | no |
+| `YOUTUBE_NO_CAPTIONS` | no captions, live stream, premiere | no captions (live streams usually have none), paste transcript instead | no |
+| `YOUTUBE_UNAVAILABLE` | private / removed | video not available | no |
+| `YOUTUBE_BLOCKED` | hosted fetch blocked, sign-in required, age-restricted | could not fetch captions here, paste transcript | no |
 | `TEXT_EMPTY` / `TEXT_TOO_LARGE` | paste fallback | | no |
 | `DOCUMENT_NOT_FOUND` | expired / replica restart | load the document again | no |
 | `RATE_LIMITED` | abuse limit | too many attempts, wait a moment | yes |
-| `REALTIME_UNAVAILABLE` | upstream busy | voice service busy, try again or use text | yes |
+| `REALTIME_UNAVAILABLE` | upstream busy | voice service busy, try again in a moment | yes |
 | `REALTIME_AUTH` | misconfiguration | something went wrong on our side | no |
 | `MIC_DENIED` (client) | permission denied | how to re-enable + switched to text | n/a |
 | `MIC_UNAVAILABLE` (client) | no device / insecure context | switched to text | n/a |
 | `WEBRTC_UNSUPPORTED` (client) | old browser | text chat only | n/a |
+| `TOKEN_EXPIRED` (client) | `/realtime/calls` returns 401 (secret expired before use) | none: the client mints a new secret and retries once; shown only if the retry fails | yes |
+| `MIC_LOST` (client) | input device removed (e.g. Bluetooth disconnect) | microphone changed, reconnecting audio | yes |
 | `CONNECTION_LOST` (client) | network drop after 30 s | Disconnected + Reconnect | yes |
 | `SESSION_CAP` (client) | 15-minute cap | session ended, start a new one | n/a |

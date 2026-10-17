@@ -59,15 +59,15 @@ routes, and Playwright mobile tests for critical flows. Write each test first an
 
 ### Container and infrastructure
 
-- [ ] T007 Write a multi-stage `Dockerfile` (`node:24-slim`, `npm ci`, `next build`, standalone
+- [X] T007 Write a multi-stage `Dockerfile` (`node:24-slim`, `npm ci`, `next build`, standalone
   runtime, non-root user, port 3000, `HEALTHCHECK` on `/api/health`) and `.dockerignore`.
-- [ ] T008 Write `infra/main.bicep` (subscription scope: resource group `rg-${environmentName}`, tags
+- [X] T008 Write `infra/main.bicep` (subscription scope: resource group `rg-${environmentName}`, tags
   incl. `azd-env-name`) and `infra/main.parameters.json` (`environmentName`, `location` default
   `canadacentral`, `principalId`, `realtimeModelName` default `gpt-realtime-2.1`,
   `realtimeModelVersion` default `2026-07-07`, `realtimeCapacity` default 10, `foundryLocation`
   default `location`, `enableSupadata` and `enableOpenAi` flags default `false`). Add
   `infra/abbreviations.json`.
-- [ ] T009 Write `infra/resources.bicep` with AVM modules:
+- [X] T009 Write `infra/resources.bicep` with AVM modules:
   - observability: Log Analytics `operational-insights/workspace:0.16.1` and App Insights
     `insights/component:0.8.0` (`disableLocalAuth: true`);
   - identity and registry: user-assigned identity `managed-identity/user-assigned-identity:0.6.0` and
@@ -77,7 +77,7 @@ routes, and Playwright mobile tests for critical flows. Write each test first an
     `disableLocalAuth: true`, deployments for the realtime model and `gpt-4o-mini-transcribe`
     `2025-12-15` capacity 50, GlobalStandard);
   - outputs.
-- [ ] T010 Add the Container Apps environment `app/managed-environment:0.16.0` (Consumption, logs to
+- [X] T010 Add the Container Apps environment `app/managed-environment:0.16.0` (Consumption, logs to
   Log Analytics) and container app `app/container-app:0.23.0` to `infra/resources.bicep`:
   - identity and registry: tag `azd-service-name: web`, UAMI attached, registry via UAMI;
   - ingress: external, port 3000, `stickySessions.affinity: sticky`, single revision mode;
@@ -85,41 +85,41 @@ routes, and Playwright mobile tests for critical flows. Write each test first an
   - env: `AZURE_CLIENT_ID`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_REALTIME_DEPLOYMENT`,
     `AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT`, `APPLICATIONINSIGHTS_CONNECTION_STRING`,
     `REALTIME_PROVIDER=azure`.
-- [ ] T011 Add role assignments to `infra/resources.bicep`:
+- [X] T011 Add role assignments to `infra/resources.bicep`:
   - UAMI gets AcrPull (ACR), Cognitive Services OpenAI User (Foundry), Key Vault Secrets User (KV)
     and Monitoring Metrics Publisher (App Insights);
   - `principalId` (the deploying user) gets Cognitive Services OpenAI User (Foundry) for local dev;
   - outputs `SERVICE_WEB_URI`, `AZURE_OPENAI_ENDPOINT`, deployment names, `AZURE_KEY_VAULT_NAME`.
-- [ ] T012 Write `azure.yaml` (service `web`, `project: .`, `language: ts`, `host: containerapp`,
+- [X] T012 Write `azure.yaml` (service `web`, `project: .`, `language: ts`, `host: containerapp`,
   `docker.remoteBuild: true`). Run `azd up` into the sponsor subscription
   (chosen with `azd env new --subscription`, never committed; canadacentral) and verify quickstart §1: health 200 over
   HTTPS, both model deployments present, local auth disabled.
-- [ ] T013 Run `azd pipeline config` (GitHub Actions, OIDC federated credential, no client secret)
+- [X] T013 Run `azd pipeline config` (GitHub Actions, OIDC federated credential, no client secret)
   against `hkaanturgut/talk-to-doc-realtime`. Commit `.github/workflows/deploy.yml`: on push to `main`
   and on `workflow_dispatch`; `permissions: id-token: write, contents: read`; `Azure/setup-azd@v2`;
   `azd provision --no-prompt`; `azd deploy --no-prompt`; `GIT_SHA` passed to the build.
-- [ ] T014 [P] Extend `.github/workflows/ci.yml` with a Playwright job (install WebKit + Chromium)
+- [X] T014 [P] Extend `.github/workflows/ci.yml` with a Playwright job (install WebKit + Chromium)
   and a gitleaks job (binary, full history, `fetch-depth: 0`). After the first green run, add both as
   required checks on `main`.
 
 ### Shared application foundation
 
-- [ ] T015 [P] Implement zod-validated env in `src/server/config/env.ts`:
+- [X] T015 [P] Implement zod-validated env in `src/server/config/env.ts`:
   - fields: `REALTIME_PROVIDER` (`azure|openai`, default `azure`), Azure endpoint and deployment names,
     optional `OPENAI_API_KEY`, `OPENAI_REALTIME_MODEL`, optional `SUPADATA_API_KEY`,
     `APPLICATIONINSIGHTS_CONNECTION_STRING`;
   - fail fast with a clear message; never log values; refuse to start if `AZURE_OPENAI_API_KEY` is
     set (research R2);
   - unit test in `tests/unit/env.test.ts`; update `.env.example` to match.
-- [ ] T016 [P] Implement the error catalog in `src/shared/errors.ts`:
+- [X] T016 [P] Implement the error catalog in `src/shared/errors.ts`:
   - `ErrorCode` union exactly as in [contracts/api.md](contracts/api.md#error-codes);
   - `AppError` class with `code`, `status`, `retryable`;
   - user messages in `src/shared/messages.ts`;
   - unit test that every code has a message in `tests/unit/errors.test.ts`.
-- [ ] T017 [P] Implement shared zod schemas in `src/shared/schemas.ts`: `PreviewDTO`,
+- [X] T017 [P] Implement shared zod schemas in `src/shared/schemas.ts`: `PreviewDTO`,
   `SessionRequest` (history ≤ 40 items, ≤ 8,000 chars total), `SessionResponse`, `ErrorBody`, `kind`
   enum `"pdf" | "youtube" | "text"`.
-- [ ] T018 Implement HTTP helpers in `src/server/http/`:
+- [X] T018 Implement HTTP helpers in `src/server/http/`:
   - `respond.ts` maps `AppError` and zod errors (`INVALID_REQUEST`) and unknown errors to `ErrorBody`,
     never leaking stack traces; unknown and 5xx errors are recorded with `trackException(err, {route,
     code})` from T020 (Constitution V);
@@ -127,19 +127,19 @@ routes, and Playwright mobile tests for critical flows. Write each test first an
     entry is client-controlled);
   - `rate-limit.ts` is an in-memory token bucket;
   - unit tests in `tests/unit/http.test.ts`, including bucket refill and 429 after the limit.
-- [ ] T019 [P] Implement `DocumentStore` in `src/server/documents/store.ts`:
+- [X] T019 [P] Implement `DocumentStore` in `src/server/documents/store.ts`:
   - interface plus in-memory implementation: 60-minute idle TTL refreshed on read, LRU eviction above
     200 documents or 300 MB, injectable clock;
   - export a singleton via `src/server/documents/index.ts`;
   - unit tests in `tests/unit/document-store.test.ts`.
-- [ ] T020 [P] Add OpenTelemetry bootstrap:
+- [X] T020 [P] Add OpenTelemetry bootstrap:
   - `src/instrumentation.ts` imports `src/server/telemetry.ts` only when `NEXT_RUNTIME === "nodejs"`;
   - `@azure/monitor-opentelemetry` uses `DefaultAzureCredential` (picks the UAMI from
     `AZURE_CLIENT_ID` in Azure, `az login` locally) and is a no-op without a connection string;
   - add the package to `serverExternalPackages`;
   - helpers `trackEvent(name, props)` and `trackException(err, props)` with an allowlist of property
     keys (no document text, history, or tokens).
-- [ ] T021 Add security headers in `next.config.ts` `headers()`:
+- [X] T021 Add security headers in `next.config.ts` `headers()`:
   - CSP `default-src 'self'`, static `connect-src 'self' https://*.openai.azure.com
     https://api.openai.com` (headers are fixed at build time; research R12), and
     `media-src 'self' blob:`;
@@ -161,40 +161,40 @@ mute and stop.
 
 ### 3a. Voice spike (riskiest first)
 
-- [ ] T022 [US1] Implement the `RealtimeProvider` interface and factory in
+- [X] T022 [US1] Implement the `RealtimeProvider` interface and factory in
   `src/server/realtime/provider.ts`, and the Azure provider in `src/server/realtime/azure.ts`:
   - get the token with `DefaultAzureCredential` and scope `https://ai.azure.com/.default`;
   - call `POST {endpoint}/openai/v1/realtime/client_secrets` with
     `expires_after.seconds: 120`;
   - zod-parse `{value, expires_at}`;
   - map upstream 401/403 to `REALTIME_AUTH` and 429/5xx to `REALTIME_UNAVAILABLE`.
-- [ ] T023 [P] [US1] Implement `src/server/realtime/session-config.ts`, which builds the session
+- [X] T023 [P] [US1] Implement `src/server/realtime/session-config.ts`, which builds the session
   object per [contracts/realtime-events.md](contracts/realtime-events.md):
   - voice mode: `semantic_vad` eagerness `auto`, `interrupt_response: true`, `near_field` noise
     reduction, transcription deployment, voice `marin`, `truncation: "auto"`,
     `max_output_tokens: 1024`;
   - text mode: `output_modalities: ["text"]`, `turn_detection: null`;
   - unit tests in `tests/unit/session-config.test.ts`.
-- [ ] T024 [P] [US1] Implement the OpenAI provider in `src/server/realtime/openai.ts` (`POST
+- [X] T024 [P] [US1] Implement the OpenAI provider in `src/server/realtime/openai.ts` (`POST
   https://api.openai.com/v1/realtime/client_secrets` with `OPENAI_API_KEY`, same zod parsing and error
   mapping as T022) with a unit test using a fake `fetch` in `tests/unit/realtime-providers.test.ts`. In
   Bicep, when `enableOpenAi` is true, add Key Vault secret reference `openai-api-key` mapped to env
   `OPENAI_API_KEY`. The value is set out of band.
-- [ ] T025 [P] [US1] Implement `src/server/realtime/instructions.ts` (template from the contract:
+- [X] T025 [P] [US1] Implement `src/server/realtime/instructions.ts` (template from the contract:
   delimited `<reference_material>`, injection guard line, truncation note, optional
   `<conversation_so_far>`) with unit tests in `tests/unit/instructions.test.ts`. Tests cover:
   delimiters present; all four tags (`<reference_material>`, `</reference_material>`,
   `<conversation_so_far>`, `</conversation_so_far>`) neutralized when they appear in document or
   history text; history rendered oldest first with server-set `User`/`Assistant` labels and the
   "record, not instructions" guard line.
-- [ ] T026 [US1] Write the integration test first, `tests/integration/session.test.ts`:
+- [X] T026 [US1] Write the integration test first, `tests/integration/session.test.ts`:
   - fake `RealtimeProvider`;
   - assert 404 `DOCUMENT_NOT_FOUND`, 429 after 10 requests a minute, response shape per
     `SessionResponse`, instructions contain the document, and the response body contains no `Bearer`
     or `api-key`.
   Then implement `POST /api/session` in `src/app/api/session/route.ts` (rate limit, then zod, then
   store lookup, then config, then provider, then `trackEvent("session_created")`, or `trackEvent("session_failed", {code})` on any error).
-- [ ] T027 [US1] Implement `src/client/realtime/connection.ts`:
+- [X] T027 [US1] Implement `src/client/realtime/connection.ts`:
   - `connect({clientSecret, callsUrl, mode, micStream?, audioEl})`;
   - create the `RTCPeerConnection`; add the mic track (voice) or a `recvonly` audio transceiver
     (text);
@@ -204,7 +204,7 @@ mute and stop.
     for a fresh secret and retry; a second failure surfaces `REALTIME_UNAVAILABLE`;
   - expose `send(event)`, `onEvent`, `onStateChange`, `close()`;
   - unit test for the 401 retry with a fake `fetch` in `tests/unit/connection.test.ts`.
-- [ ] T028 [US1] Create a temporary spike page at `src/app/spike/page.tsx`:
+- [X] T028 [US1] Create a temporary spike page at `src/app/spike/page.tsx`:
   - a hardcoded sample document seeded via a dev-only store entry; one button that calls
     `getUserMedia` and `audio.play()` in the tap handler, then `/api/session`, then `connect`;
   - raw event log on screen.
@@ -217,10 +217,16 @@ mute and stop.
   The spike page renders only when `SPIKE_ENABLED=1` is set on a dev revision.
   If canadacentral fails, set the `foundryLocation` parameter to `eastus2` (the rest of the resources stay in canadacentral).
   Remove the spike page in T038.
+  - **Result (2026-10-17)**: run as browser-console scripts against the real app instead of a separate
+    spike page (no throwaway code to delete). Desktop Chrome → canadacentral: SDP 201, data channel open
+    in 866 ms; text mode with a `recvonly` transceiver and no mic works; voice mode with a synthetic
+    track returns remote audio, `output_audio_buffer.*` and transcripts; an 80k-char document (18,058
+    input tokens) is accepted and answered. **Still open (owner)**: real iPhone audio + barge-in, and the
+    24 MB upload through ACA ingress.
 
 ### 3b. PDF ingestion and preview
 
-- [ ] T029 [P] [US1] Write `tests/fixtures/make-fixtures.ts` (uses `pdf-lib` as a dev dependency) to
+- [X] T029 [P] [US1] Write `tests/fixtures/make-fixtures.ts` (uses `pdf-lib` as a dev dependency) to
   generate:
   - `text.pdf` (3 pages, known sentences);
   - `long.pdf` (300 pages);
@@ -229,16 +235,16 @@ mute and stop.
   - `corrupt.pdf` (truncated bytes);
   - `not-pdf.pdf` (renamed text file).
   Add `npm run fixtures`. Fixtures are generated in CI, not committed.
-- [ ] T030 [P] [US1] Implement `src/server/ingestion/normalize.ts` (collapse whitespace, join
+- [X] T030 [P] [US1] Implement `src/server/ingestion/normalize.ts` (collapse whitespace, join
   hyphenated line breaks, keep page breaks as blank lines, strip control chars) with unit tests in
   `tests/unit/normalize.test.ts`.
-- [ ] T031 [P] [US1] Implement `src/server/ingestion/budget.ts`:
+- [X] T031 [P] [US1] Implement `src/server/ingestion/budget.ts`:
   - `estimateTokens(text) = ceil(len/4)`;
   - `applyBudget(text, maxChars)` cuts at the last paragraph, then sentence, then word boundary at or
     before `maxChars`, and returns `{contextText, truncated, usedRatio, fullTextTail}`;
   - per-provider max chars: Azure 80,000, OpenAI 360,000;
   - unit tests in `tests/unit/budget.test.ts`, including exact-boundary and no-boundary cases.
-- [ ] T032 [US1] Implement `src/server/ingestion/pdf.ts` with `unpdf`:
+- [X] T032 [US1] Implement `src/server/ingestion/pdf.ts` with `unpdf`:
   - checks: magic bytes `%PDF-` (`PDF_NOT_PDF`), `PasswordException` (`PDF_PASSWORD_PROTECTED`),
     any other parse failure (`PDF_INVALID`), fewer than 20 non-whitespace chars per page averaged over
     all pages (`PDF_NO_TEXT`);
@@ -246,7 +252,7 @@ mute and stop.
     `pdf.destroy()` runs in `finally`;
   - returns `{text, pageCount, pageOffsets}` so `pagesUsed` can be computed;
   - unit tests per fixture in `tests/unit/pdf.test.ts`, plus a `PDF_TIMEOUT` test with a 1 ms timeout.
-- [ ] T033 [US1] Write the integration test first, `tests/integration/ingest-pdf.test.ts`, covering
+- [X] T033 [US1] Write the integration test first, `tests/integration/ingest-pdf.test.ts`, covering
   each fixture, a request with no file (`PDF_MISSING`), and a 26 MB body (`PDF_TOO_LARGE`). Also
   assert that no file is written to disk (spy on `fs` writes and check the temp dir) and that only the
   extracted text is stored, not the raw bytes (FR-025).
@@ -256,12 +262,12 @@ mute and stop.
     then exact `file.size` ≤ 26,214,400;
   - extract, normalize, apply budget, store, return `PreviewDTO`, then
     `trackEvent("document_ingested")`.
-- [ ] T034 [P] [US1] Build `src/components/source/PdfUpload.tsx`:
+- [X] T034 [P] [US1] Build `src/components/source/PdfUpload.tsx`:
   - native file input (`accept="application/pdf"`), client-side 25 MB check with the same message
     text;
   - progress states "Uploading 42%" (via `XMLHttpRequest` `upload.onprogress`), then "Extracting
     text…" once the upload completes (FR-008); cancel button; error rendering from `ErrorBody`.
-- [ ] T035 [P] [US1] Build `src/components/preview/DocumentPreview.tsx` and `TruncationNotice.tsx`:
+- [X] T035 [P] [US1] Build `src/components/preview/DocumentPreview.tsx` and `TruncationNotice.tsx`:
   - header with title, pages, chars and kind icon;
   - a `<details>`-based collapsible, collapsed by default, with scrollable `contextText` in a
     readable mono-free font, a "text cut here" marker, and a `fullTextTail` excerpt;
@@ -269,7 +275,7 @@ mute and stop.
 
 ### 3c. Conversation UI
 
-- [ ] T036 [P] [US1] Implement `src/client/realtime/events.ts` (zod discriminated union for every
+- [X] T036 [P] [US1] Implement `src/client/realtime/events.ts` (zod discriminated union for every
   consumed event in the contract; unknown types pass through as `{type:"unknown"}`) and
   `src/client/realtime/reducer.ts` (pure session plus transcript reducer per
   [data-model.md](data-model.md)). Reducer behavior:
@@ -279,29 +285,29 @@ mute and stop.
   - `response.done` cancelled handling;
   - status sub-states.
   Unit tests with recorded event sequences in `tests/unit/reducer.test.ts`.
-- [ ] T037 [US1] Implement `src/hooks/useVoiceSession.ts`:
+- [X] T037 [US1] Implement `src/hooks/useVoiceSession.ts`:
   - `start()` in the same tap calls `getUserMedia({audio:{echoCancellation:true}})` and
     `audioEl.play()`, then `/api/session`, then `connect`;
   - `stop()` sends `response.cancel` and `output_audio_buffer.clear`, closes, and stops tracks;
   - `toggleMute()` flips `track.enabled`; `sendText()`;
   - sends the greeting `response.create` when the channel opens;
   - double-start guard; releases the mic on `pagehide`.
-- [ ] T038 [US1] Build the conversation UI:
+- [X] T038 [US1] Build the conversation UI:
   - `src/components/conversation/SessionControls.tsx`: Start/Stop primary thumb-zone button, Mute
     toggle, all targets ≥ 44px, disabled while connecting;
   - `StatusBadge.tsx`: every status from FR-017 with an `aria-live="polite"` label;
   - `Transcript.tsx`: speaker labels, in-progress shimmer, "interrupted" tag, auto-scroll that pauses
     when the user scrolls up.
   Delete `src/app/spike/`.
-- [ ] T039 [US1] Implement the 15-minute cap in `src/components/conversation/SessionTimer.tsx`
+- [X] T039 [US1] Implement the 15-minute cap in `src/components/conversation/SessionTimer.tsx`
   (countdown visible after 13:00, ends the session with `SESSION_CAP` at 15:00, offers "Start new
   session") with a fake-timer unit test in `tests/unit/session-timer.test.tsx`.
-- [ ] T040 [US1] Compose `src/app/page.tsx` as a single mobile screen:
+- [X] T040 [US1] Compose `src/app/page.tsx` as a single mobile screen:
   - create `src/components/source/SourcePicker.tsx` (tabs, PDF only for now);
   - order: `SourcePicker`, then `DocumentPreview`, then conversation area;
   - sticky bottom control bar with safe-area insets;
   - replacing a document during a live session asks for confirmation, then stops the session.
-- [ ] T041 [US1] Write the Playwright e2e test `tests/e2e/pdf-voice.spec.ts`:
+- [X] T041 [US1] Write the Playwright e2e test `tests/e2e/pdf-voice.spec.ts`:
   - route-mock `/api/session` and inject a fake connection via `window.__TEST_REALTIME__` (enabled
     only when `NEXT_PUBLIC_E2E=1`);
   - assert upload, preview collapsed/expand, Start, transcript lines streaming, interruption tag,
@@ -309,7 +315,8 @@ mute and stop.
   - run on both mobile projects.
 - [ ] T042 [US1] Update `README.md`: features, local setup (`az login`, `.env.local`), env table,
   deploy (`azd up`), and the Mermaid sequence diagram of the session handshake. Then run quickstart
-  M1 to M6 and M12 to M14 on the iPhone and record the results in the PR.
+  M1 to M6 and M12 to M14 on the iPhone and record the results in the PR. (README done; iPhone run is
+  an owner task.)
 
 **Checkpoint**: The MVP is live. Voice with a PDF works on an iPhone at the public URL.
 

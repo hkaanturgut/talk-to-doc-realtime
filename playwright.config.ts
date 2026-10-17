@@ -14,10 +14,14 @@ export default defineConfig({
     { name: "pixel-7", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: `npm run build && npx next start -p ${port}`,
+    command: `npm run fixtures && npm run build && npx next start -p ${port}`,
     url: `http://localhost:${port}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
-    env: { NEXT_PUBLIC_E2E: "1" },
+    env: {
+      NEXT_PUBLIC_E2E: "1",
+      REALTIME_PROVIDER: "azure",
+      AZURE_OPENAI_ENDPOINT: "https://e2e.openai.azure.com",
+    },
   },
 });

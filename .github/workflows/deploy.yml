@@ -1,0 +1,56 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ vars.AZURE_ENV_NAME }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      # true once the container app exists, so provisioning keeps the deployed image
+      SERVICE_WEB_RESOURCE_EXISTS: ${{ vars.SERVICE_WEB_RESOURCE_EXISTS || 'false' }}
+      ENABLE_SUPADATA: ${{ vars.ENABLE_SUPADATA || 'false' }}
+      ENABLE_OPENAI: ${{ vars.ENABLE_OPENAI || 'false' }}
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: Azure/setup-azd@v2
+
+      - name: Log in with OIDC (federated credential, no client secret)
+        run: |
+          azd auth login \
+            --client-id "$AZURE_CLIENT_ID" \
+            --federated-credential-provider github \
+            --tenant-id "$AZURE_TENANT_ID"
+
+      - name: Provision infrastructure
+        run: azd provision --no-prompt
+
+      - name: Deploy app
+        run: azd deploy --no-prompt
+
+      - name: Smoke test
+        run: |
+          uri=$(azd env get-value SERVICE_WEB_URI)
+          for i in $(seq 1 20); do
+            version=$(curl -fsS "$uri/api/health" | jq -r .version) || true
+            if [ "$version" = "$GIT_SHA" ]; then echo "healthy: $version"; exit 0; fi
+            sleep 6
+          done
+          echo "health check did not return $GIT_SHA" && exit 1

@@ -71,7 +71,7 @@ export function PdfUpload({ onLoaded, disabled }: { onLoaded: (p: PreviewDTO) =>
         <div className="flex items-center gap-3" aria-live="polite">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
             <div
-              className={`h-full bg-indigo-600 transition-all ${phase.kind === "extracting" ? "w-full animate-pulse" : ""}`}
+              className={`h-full bg-indigo-600 transition-all ${phase.kind === "extracting" ? "w-full motion-safe:animate-pulse" : ""}`}
               style={phase.kind === "uploading" ? { width: `${Math.round(phase.ratio * 100)}%` } : undefined}
             />
           </div>

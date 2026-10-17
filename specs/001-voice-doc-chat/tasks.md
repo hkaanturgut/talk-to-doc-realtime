@@ -458,7 +458,7 @@ emulation.
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T062 [P] Write `docs/architecture/diagram.py` (Python `diagrams` 0.25, `Custom` nodes) and
+- [X] T062 [P] Write `docs/architecture/diagram.py` (Python `diagrams` 0.25, `Custom` nodes) and
   `docs/architecture/requirements.txt`, with icons in `docs/architecture/icons/`:
   - Azure Architecture Icons V24 for Container Apps, Foundry, Managed Identity, Key Vault, App
     Insights, Log Analytics and ACR;
@@ -470,20 +470,20 @@ emulation.
   - trust boundaries and where secrets live.
   Render `architecture.svg` and `architecture.png`, record the icon source and terms in
   `docs/architecture/README.md`, and embed the diagram in the README.
-- [ ] T063 [P] Accessibility pass: labels on all controls, focus order, `prefers-reduced-motion`,
+- [X] T063 [P] Accessibility pass: labels on all controls, focus order, `prefers-reduced-motion`,
   contrast AA, and screen-reader announcement of status changes. Add `@axe-core/playwright` checks to
   `tests/e2e/smoke.spec.ts`.
-- [ ] T064 [P] Mobile polish at 390px and 430px: safe areas, keyboard overlap with `TextComposer`,
+- [X] T064 [P] Mobile polish at 390px and 430px: safe areas, keyboard overlap with `TextComposer`,
   tap-highlight, landscape sanity, dark mode via `prefers-color-scheme`. Add a screenshot per state to
   the PR.
-- [ ] T065 [P] Add a latency debug panel, `src/components/conversation/DebugPanel.tsx`, shown with
+- [X] T065 [P] Add a latency debug panel, `src/components/conversation/DebugPanel.tsx`, shown with
   `?debug=1`. It records `performance.now()` marks for `speech_stopped` → `output_audio_buffer.started`
   (reply start, SC-003) and `speech_started` → `output_audio_buffer.cleared` (interrupt stop, SC-004),
   and shows p50/p90 for the session. Unit test the percentile helper.
-- [ ] T066 [P] Write the grounding eval: `docs/eval/questions.md` with 10 questions and expected
+- [X] T066 [P] Write the grounding eval: `docs/eval/questions.md` with 10 questions and expected
   answers for a public-domain sample PDF (source and license noted) plus one captioned YouTube video.
   Run quickstart M16 and M17 and record the results in the PR (SC-005, SC-003, SC-004).
-- [ ] T067 Complete the README:
+- [X] T067 Complete the README:
   - architecture section (diagram, module map, key decisions with links to research.md);
   - trade-offs and limitations: 32k context, truncation, YouTube cloud blocking, in-memory store with
     sticky sessions, per-replica rate limits, client-enforced session cap, static CSP wildcard, no OCR;

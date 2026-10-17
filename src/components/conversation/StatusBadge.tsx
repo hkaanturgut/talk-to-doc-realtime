@@ -25,10 +25,10 @@ export function statusLabel(state: Pick<SessionState, "status" | "activity" | "m
 
 const DOT: Record<SessionState["status"], string> = {
   idle: "bg-neutral-400",
-  requesting_mic: "bg-amber-500 animate-pulse",
-  connecting: "bg-amber-500 animate-pulse",
+  requesting_mic: "bg-amber-500 motion-safe:animate-pulse",
+  connecting: "bg-amber-500 motion-safe:animate-pulse",
   live: "bg-emerald-500",
-  reconnecting: "bg-amber-500 animate-pulse",
+  reconnecting: "bg-amber-500 motion-safe:animate-pulse",
   disconnected: "bg-neutral-500",
   error: "bg-red-500",
 };

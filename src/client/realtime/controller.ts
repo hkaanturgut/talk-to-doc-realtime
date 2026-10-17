@@ -2,7 +2,7 @@ import { AppError, type ErrorCode } from "@/shared/errors";
 import { MESSAGES } from "@/shared/messages";
 import type { HistoryItem, SessionMode, SessionRequest, SessionResponse } from "@/shared/schemas";
 import type { ConnectFn, ConnectionState, RealtimeConnection, SecretInfo } from "./connection";
-import { parseServerEvent } from "./events";
+import { parseServerEvent, type ServerEvent } from "./events";
 import {
   currentMediaEnv,
   FALLBACK_TO_TEXT,
@@ -53,6 +53,7 @@ type Timer = ReturnType<typeof setTimeout>;
 export class SessionController {
   protected state: SessionState;
   private readonly listeners = new Set<() => void>();
+  private readonly eventListeners = new Set<(event: ServerEvent, now: number) => void>();
   protected conn?: RealtimeConnection;
   protected mic?: MediaStream;
   protected readonly deps: ControllerDeps;
@@ -77,6 +78,12 @@ export class SessionController {
   subscribe = (cb: () => void): (() => void) => {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
+  };
+
+  /** Observes raw server events (debug latency panel). */
+  onServerEvent = (cb: (event: ServerEvent, now: number) => void): (() => void) => {
+    this.eventListeners.add(cb);
+    return () => this.eventListeners.delete(cb);
   };
 
   protected dispatch(action: Action): void {
@@ -206,7 +213,10 @@ export class SessionController {
     conn.onEvent((data) => {
       if (this.conn !== conn) return;
       const event = parseServerEvent(data);
-      if (event && event.type !== "unknown") this.dispatch({ type: "server", event, now: this.now() });
+      if (!event || event.type === "unknown") return;
+      const now = this.now();
+      for (const cb of this.eventListeners) cb(event, performance.now());
+      this.dispatch({ type: "server", event, now });
     });
 
     await new Promise<void>((resolve, reject) => {

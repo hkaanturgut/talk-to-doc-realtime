@@ -1,5 +1,22 @@
 import { join } from "node:path";
-import type { Page } from "@playwright/test";
+import { test as base, type Page } from "@playwright/test";
+
+export { expect } from "@playwright/test";
+
+/**
+ * Each test gets its own client IP (x-forwarded-for), so the per-IP rate limits (20 ingests and
+ * 10 sessions per minute) don't make parallel tests flaky. Production reads the last XFF hop,
+ * which the ACA ingress appends; locally nothing appends, so this header is used as is.
+ */
+export const test = base.extend({
+  page: async ({ page }, provide) => {
+    const n = Math.floor(Math.random() * 2 ** 24);
+    await page.setExtraHTTPHeaders({
+      "x-forwarded-for": `10.${(n >> 16) & 255}.${(n >> 8) & 255}.${n & 255}`,
+    });
+    await provide(page);
+  },
+});
 
 export const FIXTURES = join(import.meta.dirname, "../fixtures/out");
 

@@ -65,7 +65,10 @@ export function PasteTranscript({ onLoaded, reason, sourceUrl }: Props) {
         rows={8}
         className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-base outline-none focus:border-indigo-500 dark:border-neutral-700 dark:bg-neutral-900"
       />
-      <p className={`text-right text-xs ${over ? "text-red-600" : "text-neutral-500"}`} aria-live="polite">
+      <p
+        className={`text-right text-xs ${over ? "text-red-600 dark:text-red-400" : "text-neutral-600 dark:text-neutral-400"}`}
+        aria-live="polite"
+      >
         {text.length.toLocaleString("en-US")} / {MAX_TEXT_CHARS.toLocaleString("en-US")} characters
       </p>
       <button

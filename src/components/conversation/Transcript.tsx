@@ -26,6 +26,7 @@ export function Transcript({ entries }: { entries: TranscriptEntry[] }) {
   return (
     <div
       ref={scroller}
+      tabIndex={0}
       onScroll={(e) => {
         const el = e.currentTarget;
         pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;

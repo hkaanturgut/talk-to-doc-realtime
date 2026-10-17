@@ -14,7 +14,16 @@ tasks.
 **https://ca-web-czb5frz44vkv6.thankfuldune-9c54b32a.canadacentral.azurecontainerapps.io**
 
 Open it on a phone, load a PDF, tap **Start voice chat**, allow the microphone, and ask a question.
-Interrupt the assistant at any time by talking over it.
+Interrupt the assistant at any time by talking over it. Add `?debug=1` to see reply and
+interruption latency (p50/p90).
+
+**Walkthrough video**: _link to be added_.
+
+| Choose a source                                       | Preview with truncation notice                   | Live conversation with barge-in            |
+| ----------------------------------------------------- | ------------------------------------------------ | ------------------------------------------ |
+| ![Source picker](docs/screenshots/1-source-light.png) | ![Preview](docs/screenshots/2-preview-light.png) | ![Live](docs/screenshots/3-live-light.png) |
+
+Dark mode follows the system setting ([screenshots](docs/screenshots/)).
 
 ## Features
 
@@ -96,14 +105,12 @@ azd env set ENABLE_SUPADATA true && azd provision
 | Microphone removed (e.g. Bluetooth headset off)               | The mic is re-acquired and swapped in with `RTCRtpSender.replaceTrack` (no renegotiation). If that fails, the app switches to text.                                                                                                       |
 | 15-minute cap                                                 | Countdown in the last 2 minutes, then the session ends. Reconnects do not reset it.                                                                                                                                                       |
 
-Known limitations:
-
-- The 15-minute cap is enforced by the client. A modified client could keep a session up to the
-  service's own 60-minute limit; enforcing it on the server would mean relaying the media.
-- Rate limits (10 sessions and 20 ingests per minute per IP) are kept in memory **per replica**, so the
-  effective limit is up to 3x with 3 replicas. A shared store (Redis) is the fix if it matters.
-
 ## Architecture
+
+![Architecture](docs/architecture/architecture.png)
+
+Source: [`docs/architecture/diagram.py`](docs/architecture/diagram.py) (diagrams as code). The voice
+session handshake:
 
 ```mermaid
 sequenceDiagram
@@ -143,6 +150,58 @@ Module map (`src/`):
 | `client/`               | Browser-only logic, no React: WebRTC connection, event schemas, reducer, session controller       |
 | `components/`, `hooks/` | React UI and the `useVoiceSession` hook                                                           |
 | `shared/`               | The only code both sides import: zod schemas, error codes, user messages                          |
+
+### Key decisions
+
+Each one has the alternatives it beat in [research.md](specs/001-voice-doc-chat/research.md).
+
+| Decision                                                                           | Why                                                                              | Research                                                                                                                                                                |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser ⇄ model over WebRTC; the server only mints a 120 s ephemeral secret        | lowest latency, no audio through our server, documented GA flow                  | [R2](specs/001-voice-doc-chat/research.md#r2-ephemeral-token-and-webrtc-handshake-azure-ga-api)                                                                         |
+| `gpt-realtime-2.1` on Azure (Foundry), with a one-variable switch to OpenAI direct | keyless Managed Identity; better barge-in and noise handling than `gpt-realtime` | [R1](specs/001-voice-doc-chat/research.md#r1-realtime-model-and-deployment), [R3](specs/001-voice-doc-chat/research.md#r3-provider-toggle-realtime_providerazureopenai) |
+| Semantic VAD with `interrupt_response`, near-field noise reduction                 | natural turn-taking; the server truncates audio on barge-in                      | [R4](specs/001-voice-doc-chat/research.md#r4-session-behavior-vad-interruption-transcripts-text-mode)                                                                   |
+| Text fallback = the same Realtime session with text output                         | one model, one prompt, one security path                                         | [R4](specs/001-voice-doc-chat/research.md#r4-session-behavior-vad-interruption-transcripts-text-mode)                                                                   |
+| Whole document in the instructions (no RAG), cut to a 20k-token budget             | the brief excludes chunking; the cut is visible to the user                      | [R6](specs/001-voice-doc-chat/research.md#r6-context-budget-and-truncation)                                                                                             |
+| In-memory store with sticky sessions behind a `DocumentStore` interface            | the brief allows in-memory; Redis is a drop-in later                             | [R10](specs/001-voice-doc-chat/research.md#r10-server-side-state-and-scaling)                                                                                           |
+| Bicep (AVM) + azd, GitHub Actions over OIDC                                        | everything reproducible, no secrets in CI                                        | [R11](specs/001-voice-doc-chat/research.md#r11-infrastructure-identity-and-cicd)                                                                                        |
+
+### Security model
+
+- **Identity**: the container app runs as a user-assigned managed identity with only these roles:
+  OpenAI User (Foundry), AcrPull, Key Vault Secrets User and Monitoring Metrics Publisher. Local
+  auth is **off** on Foundry and App Insights, so no key exists that could leak.
+- **Ephemeral secrets**: the browser only ever sees an `ek_…` secret that expires in 120 s and is
+  bound to a session config the server built. An expired secret gets one automatic re-mint.
+- **Server-built prompt**: the instructions come from the server-stored document. Client history
+  (used on reconnect) is length-capped, escaped, and wrapped as data. The model has no tools, so
+  prompt injection in a document can at worst produce an off-topic answer.
+- **Inputs**: zod on every route; PDF magic-byte, size (25 MB) and timeout checks; pasted text is
+  capped at 400k chars; YouTube URLs are host-allowlisted (no SSRF).
+- **Abuse**: per-IP token buckets (10 sessions and 20 ingests per minute), keyed on the last
+  `x-forwarded-for` hop, which the ingress appends and the client can't spoof.
+- **Headers**: CSP (`connect-src` limited to self and the provider domains), `Permissions-Policy:
+microphone=(self)`, `nosniff`, `X-Frame-Options: DENY`, strict referrer.
+- **Privacy**: PDF bytes are never written to disk; only extracted text is kept in memory for 60
+  minutes of inactivity. Telemetry uses an allowlist of property keys: no document text, history or
+  tokens.
+- **Supply chain**: gitleaks scans the full history in CI; dependencies are pinned in the lockfile.
+
+## Trade-offs and limitations
+
+- **Context**: Azure lists 32k input tokens for realtime models, so the app keeps a 20k-token
+  (80,000-char) document budget. Longer documents are cut at a boundary and the UI says how much is
+  used. A 300-page PDF uses about 10%. There is no RAG, by design of the brief.
+- **YouTube in the cloud**: captions are blocked from Azure IPs. The hosted app falls back to
+  _Paste transcript_ unless the optional caption API is enabled ([details](#youtube-in-the-hosted-app)).
+- **In-memory documents**: they are lost on a replica restart (the user sees "load it again"). Sticky
+  sessions keep a visitor on one replica; Redis would remove the limit.
+- **Per-replica rate limits**: the effective limit is up to 3x with 3 replicas.
+- **Client-enforced 15-minute cap**: a modified client could keep a session up to the service's
+  60-minute limit; a server-side cap would need a media relay.
+- **Static CSP wildcard**: `https://*.openai.azure.com` because headers are fixed at build time; a
+  nonce-based runtime CSP would need middleware.
+- **No OCR**: scanned PDFs get a clear message. Azure Document Intelligence would be the add-on.
+- **Text mode needs WebRTC too**: very old browsers get a message instead of chat.
 
 ## Getting started (local)
 
@@ -207,8 +266,41 @@ npm run test:e2e    # Playwright on iPhone 15 (WebKit) and Pixel 7 (Chromium) wi
 npm run fixtures    # regenerate test PDFs (text, 300 pages, scanned, encrypted, corrupt, not-a-PDF)
 ```
 
+What runs where:
+
+| Layer                | Count | Covers                                                                                                                                                                                                |
+| -------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit (Vitest)        | ~200  | URL parser, normalizer, budget, PDF edge cases, error mapping, rate limiter, store TTL/LRU, instruction escaping, event reducer, controller (reconnect, background, device change, text fallback)     |
+| Integration (Vitest) | ~40   | real route handlers: ingest PDF/YouTube/text, session (no key leak, rate limits, history escaping)                                                                                                    |
+| E2E (Playwright)     | 34    | both mobile profiles: upload → preview → voice with a fake transport, barge-in, mute, mic denied → text, YouTube → paste, reconnect and give-up (clock API), axe accessibility in light and dark mode |
+
 Real audio can't be automated, so [quickstart.md](specs/001-voice-doc-chat/quickstart.md) has the
-manual device checklist.
+manual device checklist, and [docs/eval/questions.md](docs/eval/questions.md) has the grounding
+eval (10/10 in text mode on the deployed app).
+
+## How AI tools were used
+
+- **Spec-driven development with GitHub Spec Kit**: `/speckit-constitution` → `specify` → `clarify`
+  → `plan` → `tasks` → `analyze` → `implement`. The owner reviewed and approved the spec, plan and
+  task list before any code was written. The `analyze` step (a separate consistency pass) found 34
+  issues in the first draft, including 5 constitution gaps, which were fixed before implementation
+  ([analysis.md](specs/001-voice-doc-chat/analysis.md)).
+- **Claude Code** implemented the tasks phase by phase: one PR per checkpoint, CI green before each
+  merge, and every task checked off in [tasks.md](specs/001-voice-doc-chat/tasks.md) with notes where
+  reality differed from the plan.
+- **Verified against the real service, not assumed**: the riskiest assumptions (WebRTC from
+  canadacentral, text mode with no mic, an 18k-token prompt, a 24 MB upload through the ingress, the
+  live YouTube behavior from Azure) were each tested against the deployed resources. The results are
+  recorded in tasks.md (T028) and the PR descriptions.
+- **Reviewed by hand**: the Bicep role assignments, the token flow and prompt escaping, the CSP, and
+  the error catalog wording.
+
+## Cost notes
+
+Idle cost is small: Container Apps with 1 always-on replica (0.5 vCPU), ACR Basic (~$5/month), and
+Log Analytics at low volume. Model use is pay-per-token: realtime audio is the main cost driver,
+bounded by the 15-minute session cap and the session rate limit. Tear everything down with
+`azd down --purge`.
 
 ## License
 

@@ -60,7 +60,7 @@ describe("SessionController", () => {
 
   it("mute flips track.enabled", async () => {
     const track = fakeTrack();
-    const { controller, transport } = makeController({ getUserMedia: vi.fn(async () => fakeStream(track)) });
+    const { controller } = makeController({ getUserMedia: vi.fn(async () => fakeStream(track)) });
     await controller.start();
     controller.toggleMute();
     expect(track.enabled).toBe(false);

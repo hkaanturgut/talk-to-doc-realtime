@@ -423,13 +423,13 @@ to paste, as documented.
 **Independent Test**: quickstart M10 and M11 (airplane mode on the iPhone); Playwright offline
 emulation.
 
-- [ ] T056 [P] [US4] Implement `src/client/realtime/reconnect.ts`:
+- [X] T056 [P] [US4] Implement `src/client/realtime/reconnect.ts`:
   - pure `nextDelay(attempt)` returns 1, 2, 4, 8 s, then 8 s for every later attempt, and
     `shouldGiveUp(firstDropAt, now)` is true 30 s after the first drop;
   - a trigger adapter maps `connectionState` (`disconnected` after a 2 s grace period, `failed`),
     data channel `close`, and `window` `offline`/`online` to events;
   - unit tests with fake timers in `tests/unit/reconnect.test.ts`.
-- [ ] T057 [US4] Integrate reconnect into `src/hooks/useVoiceSession.ts`:
+- [X] T057 [US4] Integrate reconnect into `src/hooks/useVoiceSession.ts`:
   - on trigger, set status `reconnecting`, close the old peer connection, and fetch a new token with
     `history` (last finalized turns ≤ 8,000 chars);
   - reconnect with the same mic stream, then add a `system` transcript entry "Reconnected";
@@ -437,19 +437,19 @@ emulation.
   - give up after 30 s: status `disconnected` with `CONNECTION_LOST`, a Reconnect button, and a
     "Type instead" option;
   - `DOCUMENT_NOT_FOUND` during reconnect shows "Load the document again".
-- [ ] T058 [US4] Handle `visibilitychange` and `pagehide` on mobile in
+- [X] T058 [US4] Handle `visibilitychange` and `pagehide` on mobile in
   `src/hooks/useVoiceSession.ts`. When hidden for more than 30 s while live, end cleanly and show
   "Session paused while the app was in the background" on return; a short background period is left
   alone. Unit test with mocked document visibility.
-- [ ] T059 [US4] Handle audio device changes in `src/hooks/useVoiceSession.ts`: on
+- [X] T059 [US4] Handle audio device changes in `src/hooks/useVoiceSession.ts`: on
   `navigator.mediaDevices` `devicechange` or the mic track's `ended` event, re-acquire the mic with
   `getUserMedia` and swap it in with `RTCRtpSender.replaceTrack` (no renegotiation), showing a
   `MIC_LOST` notice; if re-acquiring fails, switch to text mode. Unit test with mocked media devices in
   `tests/unit/device-change.test.ts`.
-- [ ] T060 [US4] Write the Playwright e2e test `tests/e2e/reconnect.spec.ts`: the fake connection emits
+- [X] T060 [US4] Write the Playwright e2e test `tests/e2e/reconnect.spec.ts`: the fake connection emits
   `disconnected`, then reconnects; assert the badge goes from "Reconnecting" to "Live" and the
   transcript is intact; the give-up path asserts "Disconnected" and the Reconnect button.
-- [ ] T061 [US4] Update `README.md`: reconnect behavior, background handling, device switching, and
+- [X] T061 [US4] Update `README.md`: reconnect behavior, background handling, device switching, and
   known limitations (client-enforced cap, per-replica rate limit) (Constitution VIII).
 
 **Checkpoint**: All four stories work on their own.

@@ -329,14 +329,14 @@ conversation.
 
 **Independent Test**: quickstart M7 and M8 locally; deployed behavior documented.
 
-- [ ] T043 [P] [US2] Implement `src/server/ingestion/youtube/url.ts` (`parseYouTubeUrl(input) →
+- [X] T043 [P] [US2] Implement `src/server/ingestion/youtube/url.ts` (`parseYouTubeUrl(input) →
   videoId | AppError(YOUTUBE_INVALID_URL)`):
   - host allowlist: `youtube.com`, `www.`, `m.`, `music.`, `youtu.be`, `youtube-nocookie.com`;
   - paths: `/watch?v=`, `/shorts/`, `/embed/`, `/live/`, `/v/`, `youtu.be/`;
   - id must match `^[A-Za-z0-9_-]{11}$`; the `t`, `list` and `si` params are ignored.
   Table-driven unit tests in `tests/unit/youtube-url.test.ts` with 20+ cases, including invalid
   hosts and lookalike domains.
-- [ ] T044 [P] [US2] Implement `src/server/ingestion/youtube/metadata.ts` (oEmbed: zod-parsed title and
+- [X] T044 [P] [US2] Implement `src/server/ingestion/youtube/metadata.ts` (oEmbed: zod-parsed title and
   channel, injectable `fetch`, 3 s timeout, title falls back to "YouTube video") and the `TranscriptProvider` interface plus chain
   in `src/server/ingestion/youtube/index.ts`. Chain rules:
   - try providers in order;
@@ -347,7 +347,7 @@ conversation.
     auto-generated.
   Providers also receive an injectable `fetch`, so no test touches the network.
   Unit tests with fake providers in `tests/unit/youtube-chain.test.ts`.
-- [ ] T045 [US2] Implement the `direct` provider in
+- [X] T045 [US2] Implement the `direct` provider in
   `src/server/ingestion/youtube/providers/direct.ts` with `youtube-transcript-plus`. Map its typed
   errors:
   - `TooManyRequest` and `LOGIN_REQUIRED` become `BLOCKED` (this also covers age-restricted videos,
@@ -357,28 +357,31 @@ conversation.
   - `VideoUnavailable` becomes `UNAVAILABLE`.
   Unit test the mapping table in `tests/unit/youtube-direct.test.ts`.
   Join segments into text and set duration from the last segment end.
-- [ ] T046 [US2] Write the integration test first, `tests/integration/ingest-youtube.test.ts` (fake
+- [X] T046 [US2] Write the integration test first, `tests/integration/ingest-youtube.test.ts` (fake
   providers; invalid URL 400, no captions 422, all blocked 502, 429 after 20 requests a minute,
   success `PreviewDTO` with language). Then implement `POST /api/ingest/youtube` in
   `src/app/api/ingest/youtube/route.ts` (rate limit 20 per minute per IP).
-- [ ] T047 [P] [US2] Write the integration test first, `tests/integration/ingest-text.test.ts`
+- [X] T047 [P] [US2] Write the integration test first, `tests/integration/ingest-text.test.ts`
   (empty 400, over 400,000 chars 413, 429 after 20 requests a minute, success). Then implement
   `POST /api/ingest/text` in `src/app/api/ingest/text/route.ts` (rate limit 20 per minute per IP).
-- [ ] T048 [US2] Build `src/components/source/YouTubeForm.tsx` (URL input with `inputmode="url"`,
+- [X] T048 [US2] Build `src/components/source/YouTubeForm.tsx` (URL input with `inputmode="url"`,
   paste button, inline validation, "Fetching captions…" state while the request runs, FR-008) and
   `PasteTranscript.tsx` (textarea, char counter, shown
   automatically on `YOUTUBE_BLOCKED` or `YOUTUBE_NO_CAPTIONS` and available as a tab). Add both tabs to
   `src/components/source/SourcePicker.tsx`; show the caption language and video duration (`durationSeconds` as m:ss) in the preview header.
-- [ ] T049 [US2] Write the Playwright e2e test `tests/e2e/youtube.spec.ts` (mocked routes: success,
+- [X] T049 [US2] Write the Playwright e2e test `tests/e2e/youtube.spec.ts` (mocked routes: success,
   blocked → paste flow → preview).
-- [ ] T050 [US2] Bonus, timeboxed to one session: implement the `supadata` provider in
+- [X] T050 [US2] Bonus, timeboxed to one session: implement the `supadata` provider in
   `src/server/ingestion/youtube/providers/supadata.ts`. It is enabled only when `SUPADATA_API_KEY` is
-  set, and calls a fixed host with zod-parsed responses. In Bicep, add Key Vault secret
+  set, and calls a fixed host with zod-parsed responses. **Outcome**: provider, Bicep wiring and tests are
+  done; it is off by default because no API key was provisioned, so hosted YouTube falls back to paste.
+  Owner: add a key to Key Vault and set `ENABLE_SUPADATA=true` to verify M7 on the deployed URL.
+  In Bicep, add Key Vault secret
   `supadata-api-key` referenced by the container app secret (`keyVaultUrl` + UAMI) and mapped to env
   `SUPADATA_API_KEY`; the value is set out of band with
   `az keyvault secret set`. Verify M7 on the deployed URL. If the timebox runs out, skip it and
   document the outcome.
-- [ ] T051 [US2] Add a README section "YouTube in the hosted app" explaining cloud-IP blocking, the
+- [X] T051 [US2] Add a README section "YouTube in the hosted app" explaining cloud-IP blocking, the
   provider chain, and the trade-offs (proxy vs API vs paste) with costs.
 
 **Checkpoint**: YouTube works locally. The hosted app either works through the provider or falls back

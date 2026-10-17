@@ -36,3 +36,6 @@ __pycache__/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Generated test fixtures
+tests/fixtures/out/

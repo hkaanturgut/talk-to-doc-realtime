@@ -22,6 +22,10 @@ jobs:
       AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
       AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      # true once the container app exists, so provisioning keeps the deployed image
+      SERVICE_WEB_RESOURCE_EXISTS: ${{ vars.SERVICE_WEB_RESOURCE_EXISTS || 'false' }}
+      ENABLE_SUPADATA: ${{ vars.ENABLE_SUPADATA || 'false' }}
+      ENABLE_OPENAI: ${{ vars.ENABLE_OPENAI || 'false' }}
       GIT_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5

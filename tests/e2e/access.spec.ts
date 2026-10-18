@@ -16,7 +16,7 @@ test("the app is hidden behind the access screen until the right code is entered
 
   await page.getByLabel("Access code").fill("not-the-code");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("alert")).toHaveText(/That code is not right/);
+  await expect(page.locator("#access-error")).toHaveText(/That code is not right/);
 
   await page.getByLabel("Access code").fill(E2E_ACCESS_CODE);
   await page.getByRole("button", { name: "Continue" }).click();

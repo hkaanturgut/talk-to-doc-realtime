@@ -51,10 +51,20 @@
 ## Phase 7: Ship and validate
 
 - [X] T024 Lint, typecheck, format, unit/integration, build, e2e locally
-- [ ] T025 PR, CI green, merge, deploy
-- [ ] T026 Run quickstart V1–V8 against production with the relay running on the owner's machine
+- [X] T025 PR, CI green, merge, deploy
+- [X] T026 Run quickstart V1–V8 against production with the relay running on the owner's machine
 
 ## Dependencies
 
 T001–T003 → T004–T008 → T009–T014 → T015–T018 → T019–T020 → T021–T023 → T024–T026.
 [P] tasks in the same phase touch different files and can run together.
+
+## Production validation (2026-10-17, `f744996`)
+
+- V1/V4: health flips `online: true` with the relay running and `online: false, lastSeenSeconds: 35`
+  after it stops.
+- V2/V8: 10 of 10 public captioned videos loaded through the relay on the hosted app in 2.2–5.6 s
+  (relay side 1.7–4.4 s); `dQw4w9WgXcQ` went direct.
+- V5: relay offline → `YOUTUBE_BLOCKED` paste fallback in 1.3 s.
+- V6: `/api/relay/next` and `/api/relay/result` return `401` without or with a wrong secret.
+- V7: `lsof -iTCP -sTCP:LISTEN` shows no node listener while the relay runs.

@@ -412,7 +412,8 @@ What runs where:
 
 Real audio can't be automated, so [quickstart.md](specs/001-voice-doc-chat/quickstart.md) has the
 manual device checklist, and [docs/eval/questions.md](docs/eval/questions.md) has the grounding
-eval (10/10 in text mode on the deployed app).
+eval (10/10 in text mode on the deployed app). [docs/eval/guardrails.md](docs/eval/guardrails.md) has the
+guardrail eval (13/13 on the deployed app: on-topic, unrelated, harmful, injection, instruction leak).
 
 ## How AI tools were used
 

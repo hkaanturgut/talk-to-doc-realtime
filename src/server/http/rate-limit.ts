@@ -54,3 +54,5 @@ export function createRateLimiter(opts: {
 const MINUTE = 60_000;
 export const sessionLimiter = createRateLimiter({ limit: 10, windowMs: MINUTE });
 export const ingestLimiter = createRateLimiter({ limit: 20, windowMs: MINUTE });
+/** Failed caption-relay authentications per client IP. */
+export const relayAuthLimiter = createRateLimiter({ limit: 10, windowMs: MINUTE });

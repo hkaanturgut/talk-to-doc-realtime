@@ -16,6 +16,7 @@ from diagrams.azure.general import Mobile
 from diagrams.onprem.ci import GithubActions
 from diagrams.onprem.vcs import Github
 from diagrams.generic.network import Firewall
+from diagrams.onprem.client import Client
 from diagrams.programming.framework import Nextjs
 
 GRAPH = {"pad": "0.4", "nodesep": "0.8", "ranksep": "1.4", "fontname": "Helvetica", "fontsize": "15", "splines": "spline"}
@@ -52,13 +53,16 @@ def render(fmt: str) -> None:
 
         youtube = Firewall("YouTube\n(captions; blocks cloud IPs)")
 
+        with Cluster("Owner's machine (home IP, no listening port)"):
+            relay = Client("caption relay\nnpm run relay\n(outbound only)")
+
         with Cluster("Azure resource group rg-talk-to-doc-dev (canadacentral)"):
             with Cluster("Container Apps environment"):
-                app = ContainerApps("web: Next.js 16\n/api/ingest/*, /api/session\nin-memory docs (sticky)")
+                app = ContainerApps("web: Next.js 16\n/api/ingest/*, /api/session, /api/relay/*\nin-memory docs + relay queue")
                 Nextjs("App Router\n+ route handlers") - Edge(style="invis") - app
             uami = ManagedIdentities("User-assigned\nmanaged identity")
             foundry = AIStudio("Foundry (AI Services)\ngpt-realtime-2.1\ngpt-4o-mini-transcribe\nlocal auth OFF")
-            kv = KeyVaults("Key Vault (RBAC)\noptional 3rd-party keys")
+            kv = KeyVaults("Key Vault (RBAC)\ncaption-relay-secret\noptional 3rd-party keys")
             acr = ContainerRegistries("Container Registry")
             appi = ApplicationInsights("App Insights\n(Entra auth)")
             logs = LogAnalyticsWorkspaces("Log Analytics")
@@ -66,7 +70,9 @@ def render(fmt: str) -> None:
         phone >> HTTPS >> app
         app >> Edge(color="#2563eb", label="client_secrets\n(Entra token via MI)") >> foundry
         phone >> WEBRTC >> foundry
-        app >> Edge(color="#9333ea", label="captions (direct / Supadata)") >> youtube
+        app >> Edge(color="#9333ea", label="captions (direct; blocked from Azure)") >> youtube
+        relay >> Edge(color="#9333ea", style="bold", label="long poll /api/relay/next\nPOST /api/relay/result\n(Bearer secret)") >> app
+        relay >> Edge(color="#9333ea", label="captions (home IP)") >> youtube
 
         app - Edge(color="#dc2626", style="dashed", label="runs as") - uami
         uami >> rbac("OpenAI User") >> foundry

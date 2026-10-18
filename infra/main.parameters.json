@@ -10,6 +10,7 @@
     "realtimeModelVersion": { "value": "${REALTIME_MODEL_VERSION=2026-07-07}" },
     "realtimeCapacity": { "value": "${REALTIME_CAPACITY=10}" },
     "enableSupadata": { "value": "${ENABLE_SUPADATA=false}" },
+    "enableCaptionRelay": { "value": "${ENABLE_CAPTION_RELAY=false}" },
     "enableOpenAi": { "value": "${ENABLE_OPENAI=false}" },
     "webExists": { "value": "${SERVICE_WEB_RESOURCE_EXISTS=false}" }
   }

@@ -29,6 +29,8 @@ questions). Items that are really the client's call are also raised with Genius 
   starts per minute per client; more returns "Too many attempts, wait a moment".
 - Q: In the hosted app, where do YouTube captions come from if direct fetching is blocked? → A: Try
   direct fetch first, then an optional configured caption provider, then offer paste-transcript.
+  Update 2026-10-17: Azure is fully blocked, so feature
+  [002-caption-relay](../002-caption-relay/spec.md) adds an outbound-only owner-run relay to the chain.
 
 ## User Scenarios & Testing *(mandatory)*
 

@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "relay": "tsx --conditions=react-server tools/caption-relay/main.ts",
     "fixtures": "node --experimental-strip-types tests/fixtures/make-fixtures.ts"
   },
   "dependencies": {
@@ -47,6 +48,7 @@
     "pdf-lib": "^1.17.1",
     "prettier": "^3.9.10",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.5"
   }

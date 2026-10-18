@@ -9,6 +9,8 @@ param realtimeModelVersion string
 param realtimeCapacity int
 param enableSupadata bool
 param enableCaptionRelay bool
+param enableAccessCode bool
+param maxVoiceSessions int
 param enableOpenAi bool
 param webExists bool
 
@@ -138,11 +140,13 @@ module foundry 'br/public:avm/res/cognitive-services/account:0.19.1' = {
         name: realtimeModelName
         model: { format: 'OpenAI', name: realtimeModelName, version: realtimeModelVersion }
         sku: { name: 'GlobalStandard', capacity: realtimeCapacity }
+        raiPolicyName: 'Microsoft.DefaultV2' // Azure default content filter, pinned explicitly (feature 003)
       }
       {
         name: transcribeModelName
         model: { format: 'OpenAI', name: transcribeModelName, version: '2025-12-15' }
         sku: { name: 'GlobalStandard', capacity: 50 }
+        raiPolicyName: 'Microsoft.DefaultV2'
       }
     ]
     roleAssignments: concat(
@@ -205,6 +209,15 @@ var optionalSecrets = concat(
         }
       ]
     : [],
+  enableAccessCode
+    ? [
+        {
+          name: 'access-code'
+          keyVaultUrl: '${keyVault.outputs.uri}secrets/access-code'
+          identity: identity.outputs.resourceId
+        }
+      ]
+    : [],
   enableOpenAi
     ? [
         {
@@ -219,6 +232,7 @@ var optionalSecrets = concat(
 var optionalEnv = concat(
   enableSupadata ? [{ name: 'SUPADATA_API_KEY', secretRef: 'supadata-api-key' }] : [],
   enableCaptionRelay ? [{ name: 'CAPTION_RELAY_SECRET', secretRef: 'caption-relay-secret' }] : [],
+  enableAccessCode ? [{ name: 'ACCESS_CODE', secretRef: 'access-code' }] : [],
   enableOpenAi ? [{ name: 'OPENAI_API_KEY', secretRef: 'openai-api-key' }] : []
 )
 
@@ -270,6 +284,7 @@ module web 'br/public:avm/res/app/container-app:0.23.0' = {
             { name: 'AZURE_OPENAI_REALTIME_DEPLOYMENT', value: realtimeModelName }
             { name: 'AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT', value: transcribeModelName }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }
+            { name: 'MAX_VOICE_SESSIONS', value: string(maxVoiceSessions) }
           ],
           optionalEnv
         )

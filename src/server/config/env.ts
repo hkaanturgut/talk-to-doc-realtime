@@ -17,6 +17,11 @@ const EnvSchema = z
     OPENAI_TRANSCRIBE_MODEL: optional.default("gpt-4o-mini-transcribe"),
     SUPADATA_API_KEY: optional,
     CAPTION_RELAY_SECRET: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(32).optional()),
+    ACCESS_CODE: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(12).max(200).optional()),
+    MAX_VOICE_SESSIONS: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.coerce.number().int().min(1).max(50).default(3),
+    ),
     APPLICATIONINSIGHTS_CONNECTION_STRING: optional,
     AZURE_OPENAI_API_KEY: optional,
   })

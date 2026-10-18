@@ -58,16 +58,16 @@ def render(fmt: str) -> None:
 
         with Cluster("Azure resource group rg-talk-to-doc-dev (canadacentral)"):
             with Cluster("Container Apps environment"):
-                app = ContainerApps("web: Next.js 16\n/api/ingest/*, /api/session, /api/relay/*\nin-memory docs + relay queue")
+                app = ContainerApps("web: Next.js 16\nproxy.ts: access code + origin check\n/api/ingest/*, /api/session, /api/relay/*\nin-memory docs, relay queue, voice slots")
                 Nextjs("App Router\n+ route handlers") - Edge(style="invis") - app
             uami = ManagedIdentities("User-assigned\nmanaged identity")
             foundry = AIStudio("Foundry (AI Services)\ngpt-realtime-2.1\ngpt-4o-mini-transcribe\nlocal auth OFF")
-            kv = KeyVaults("Key Vault (RBAC)\ncaption-relay-secret\noptional 3rd-party keys")
+            kv = KeyVaults("Key Vault (RBAC)\naccess-code, caption-relay-secret\noptional 3rd-party keys")
             acr = ContainerRegistries("Container Registry")
             appi = ApplicationInsights("App Insights\n(Entra auth)")
             logs = LogAnalyticsWorkspaces("Log Analytics")
 
-        phone >> HTTPS >> app
+        phone >> Edge(color="#2563eb", label="HTTPS\n(access cookie)") >> app
         app >> Edge(color="#2563eb", label="client_secrets\n(Entra token via MI)") >> foundry
         phone >> WEBRTC >> foundry
         app >> Edge(color="#9333ea", label="captions (direct; blocked from Azure)") >> youtube
@@ -77,7 +77,7 @@ def render(fmt: str) -> None:
         app - Edge(color="#dc2626", style="dashed", label="runs as") - uami
         uami >> rbac("OpenAI User") >> foundry
         uami >> rbac("AcrPull") >> acr
-        uami >> rbac("Secrets User") >> kv
+        uami >> rbac("Secrets User\n(access-code, relay secret)") >> kv
         uami >> rbac("Metrics Publisher") >> appi
         app >> Edge(color="#6b7280", label="OTel") >> appi >> logs
 

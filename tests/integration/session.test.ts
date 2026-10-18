@@ -1,7 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { POST as heartbeat } from "@/app/api/session/heartbeat/route";
+import { POST as release } from "@/app/api/session/release/route";
 import { POST } from "@/app/api/session/route";
 import { documentStore } from "@/server/documents";
 import { setRealtimeProviderForTests } from "@/server/realtime";
+import { voiceLeases } from "@/server/realtime/leases";
 import type { RealtimeProvider } from "@/server/realtime/provider";
 import type { SessionConfig } from "@/server/realtime/session-config";
 import { AppError } from "@/shared/errors";
@@ -118,5 +121,94 @@ describe("POST /api/session", () => {
     const res = await post({ documentId: doc.id, mode: "voice" });
     expect(res.status).toBe(503);
     expect((await res.json()).error).toMatchObject({ code: "REALTIME_UNAVAILABLE", retryable: true });
+  });
+});
+
+describe("voice leases (feature 003)", () => {
+  beforeEach(() => {
+    setRealtimeProviderForTests(fake);
+    fail = undefined;
+    vi.stubEnv("MAX_VOICE_SESSIONS", "2");
+    voiceLeases.clear();
+  });
+  afterEach(() => {
+    setRealtimeProviderForTests(undefined);
+    vi.unstubAllEnvs();
+  });
+
+  const beat = (leaseId: unknown) =>
+    heartbeat(
+      new Request("http://localhost/api/session/heartbeat", {
+        method: "POST",
+        body: JSON.stringify({ leaseId }),
+      }),
+    );
+  const free = (body: string) =>
+    release(
+      new Request("http://localhost/api/session/release", {
+        method: "POST",
+        headers: { "content-type": "text/plain" },
+        body,
+      }),
+    );
+
+  async function freeAll(ids: (string | undefined)[]) {
+    for (const id of ids) if (id) await free(JSON.stringify({ leaseId: id }));
+  }
+
+  it("caps concurrent voice sessions, keeps the slot on renew, frees on release", async () => {
+    const doc = makeDoc();
+    documentStore.put(doc);
+    const a = SessionResponseSchema.parse(await (await post({ documentId: doc.id, mode: "voice" })).json());
+    const b = SessionResponseSchema.parse(await (await post({ documentId: doc.id, mode: "voice" })).json());
+    expect(a.leaseId).toBeDefined();
+    expect(b.leaseId).not.toBe(a.leaseId);
+
+    const busy = await post({ documentId: doc.id, mode: "voice" });
+    expect(busy.status).toBe(503);
+    expect((await busy.json()).error).toMatchObject({ code: "VOICE_BUSY", retryable: true });
+
+    // reconnect / token refresh with the lease keeps working at capacity
+    const renewed = SessionResponseSchema.parse(
+      await (await post({ documentId: doc.id, mode: "voice", leaseId: a.leaseId })).json(),
+    );
+    expect(renewed.leaseId).toBe(a.leaseId);
+
+    // text mode takes no slot
+    const text = SessionResponseSchema.parse(await (await post({ documentId: doc.id, mode: "text" })).json());
+    expect(text.leaseId).toBeUndefined();
+
+    expect((await beat(a.leaseId)).status).toBe(204);
+    expect((await free(JSON.stringify({ leaseId: a.leaseId }))).status).toBe(204);
+    expect((await beat(a.leaseId)).status).toBe(404);
+    const c = SessionResponseSchema.parse(await (await post({ documentId: doc.id, mode: "voice" })).json());
+    expect(c.leaseId).toBeDefined();
+    await freeAll([b.leaseId, c.leaseId]);
+  });
+
+  it("releases the slot when minting fails", async () => {
+    vi.stubEnv("MAX_VOICE_SESSIONS", "1");
+    const doc = makeDoc();
+    documentStore.put(doc);
+    fail = new AppError("REALTIME_UNAVAILABLE");
+    expect((await post({ documentId: doc.id, mode: "voice" })).status).toBe(503);
+    fail = undefined;
+    const ok = SessionResponseSchema.parse(await (await post({ documentId: doc.id, mode: "voice" })).json());
+    await freeAll([ok.leaseId]);
+  });
+
+  it("does not take a slot for an unknown document", async () => {
+    vi.stubEnv("MAX_VOICE_SESSIONS", "1");
+    await post({ documentId: "00000000-0000-4000-8000-000000000000", mode: "voice" });
+    const doc = makeDoc();
+    documentStore.put(doc);
+    const ok = SessionResponseSchema.parse(await (await post({ documentId: doc.id, mode: "voice" })).json());
+    await freeAll([ok.leaseId]);
+  });
+
+  it("validates heartbeat and release bodies", async () => {
+    expect((await beat("nope")).status).toBe(400);
+    expect((await free("not json")).status).toBe(400);
+    expect((await free("{}")).status).toBe(400);
   });
 });

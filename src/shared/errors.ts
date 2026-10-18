@@ -16,6 +16,8 @@ export const ERROR_CODES = [
   "DOCUMENT_NOT_FOUND",
   "RATE_LIMITED",
   "UNAUTHORIZED",
+  "FORBIDDEN",
+  "VOICE_BUSY",
   "RELAY_JOB_NOT_FOUND",
   "REALTIME_UNAVAILABLE",
   "REALTIME_AUTH",
@@ -55,6 +57,8 @@ export const ERROR_META: Record<ErrorCode, ErrorMeta> = {
   DOCUMENT_NOT_FOUND: { status: 404, retryable: false },
   RATE_LIMITED: { status: 429, retryable: true },
   UNAUTHORIZED: { status: 401, retryable: false },
+  FORBIDDEN: { status: 403, retryable: false },
+  VOICE_BUSY: { status: 503, retryable: true },
   RELAY_JOB_NOT_FOUND: { status: 404, retryable: false },
   REALTIME_UNAVAILABLE: { status: 503, retryable: true },
   REALTIME_AUTH: { status: 500, retryable: false },
@@ -65,7 +69,7 @@ export const ERROR_META: Record<ErrorCode, ErrorMeta> = {
   TOKEN_EXPIRED: { status: 0, retryable: true },
   MIC_LOST: { status: 0, retryable: true },
   CONNECTION_LOST: { status: 0, retryable: true },
-  SESSION_CAP: { status: 0, retryable: false },
+  SESSION_CAP: { status: 409, retryable: false },
 };
 
 export class AppError extends Error {

@@ -47,6 +47,24 @@ export async function fetchSession(req: SessionRequest): Promise<SessionResponse
   return SessionResponseSchema.parse(await postJson("/api/session", req, "REALTIME_UNAVAILABLE"));
 }
 
+/** Voice slot keep-alive (feature 003). */
+export async function heartbeatLease(leaseId: string): Promise<"ok" | "cap" | "gone"> {
+  const res = await fetch("/api/session/heartbeat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ leaseId }),
+  });
+  if (res.status === 204) return "ok";
+  return res.status === 409 ? "cap" : "gone";
+}
+
+/** Frees the voice slot; `sendBeacon` survives page close. */
+export function releaseLease(leaseId: string): void {
+  const body = JSON.stringify({ leaseId });
+  if (typeof navigator !== "undefined" && navigator.sendBeacon?.("/api/session/release", body)) return;
+  void fetch("/api/session/release", { method: "POST", body, keepalive: true }).catch(() => undefined);
+}
+
 export async function ingestYouTube(url: string): Promise<PreviewDTO> {
   return PreviewSchema.parse(await postJson("/api/ingest/youtube", { url }, "INTERNAL"));
 }

@@ -31,7 +31,12 @@ export interface ControllerDeps {
   now?: () => number;
   initialMode?: SessionMode;
   mediaEnv?: () => MediaEnv;
+  /** Voice slot keep-alive (feature 003): "cap" ends the conversation at the 15-minute limit. */
+  heartbeat?: (leaseId: string) => Promise<"ok" | "cap" | "gone">;
+  releaseLease?: (leaseId: string) => void;
 }
+
+export const HEARTBEAT_MS = 30_000;
 
 const MIC_CONSTRAINTS: MediaStreamConstraints = {
   audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -66,6 +71,9 @@ export class SessionController {
   private graceTimer?: Timer;
   private backgroundTimer?: Timer;
   private hiddenAt?: number;
+  /** Server voice slot, kept across token refreshes and reconnects, released on teardown. */
+  private leaseId?: string;
+  private heartbeatTimer?: ReturnType<typeof setInterval>;
 
   constructor(deps: ControllerDeps) {
     this.deps = deps;
@@ -143,6 +151,13 @@ export class SessionController {
     } catch (err) {
       if (seq !== this.connectSeq) return;
       this.teardown();
+      if (err instanceof AppError && err.code === "VOICE_BUSY" && this.state.mode === "voice") {
+        // Voice is at capacity: continue the same conversation in text mode, with an explanation.
+        this.dispatch({ type: "local/mode", mode: "text" });
+        this.dispatch({ type: "local/status", status: "idle" });
+        this.dispatch({ type: "local/notice", notice: MESSAGES.VOICE_BUSY });
+        return this.start();
+      }
       this.handleStartError(err);
     }
   }
@@ -191,10 +206,23 @@ export class SessionController {
 
   /** Mints a secret, connects, and resolves once the data channel is open (throws otherwise). */
   protected async openConnection(seq: number, history?: HistoryItem[]): Promise<void> {
-    const request: SessionRequest = { documentId: this.deps.documentId, mode: this.state.mode, history };
-    const session = await this.deps.fetchSession(request);
+    const mode = this.state.mode;
+    const request = (): SessionRequest => ({
+      documentId: this.deps.documentId,
+      mode,
+      history,
+      leaseId: mode === "voice" ? this.leaseId : undefined,
+    });
+    const session = await this.deps.fetchSession(request());
+    if (seq !== this.connectSeq) {
+      // stopped while minting: give the slot back instead of holding it until it idles out
+      if (session.leaseId && session.leaseId !== this.leaseId) this.deps.releaseLease?.(session.leaseId);
+      throw new AppError("REALTIME_UNAVAILABLE", { message: "superseded" });
+    }
+    if (mode === "voice") this.leaseId = session.leaseId;
     const getSecret = async (): Promise<SecretInfo> => {
-      const fresh = await this.deps.fetchSession(request);
+      const fresh = await this.deps.fetchSession(request());
+      if (mode === "voice" && fresh.leaseId && seq === this.connectSeq) this.leaseId = fresh.leaseId;
       return { clientSecret: fresh.clientSecret, callsUrl: fresh.callsUrl };
     };
     const conn = await this.deps.connect({
@@ -245,6 +273,7 @@ export class SessionController {
 
   private onOpen(sessionMaxSeconds: number): void {
     this.dispatch({ type: "local/live", now: this.now(), sessionMaxSeconds });
+    this.startHeartbeat();
     if (this.mic) this.applyMute();
     if (!this.greeted) {
       this.greeted = true;
@@ -328,8 +357,8 @@ export class SessionController {
       if (seq !== this.connectSeq || this.drop !== drop) return;
       this.conn?.close();
       this.conn = undefined;
-      if (err instanceof AppError && err.code === "DOCUMENT_NOT_FOUND")
-        return this.giveUp("DOCUMENT_NOT_FOUND");
+      if (err instanceof AppError && (err.code === "DOCUMENT_NOT_FOUND" || err.code === "SESSION_CAP"))
+        return this.giveUp(err.code);
       drop.attempt += 1;
       if (shouldGiveUp(drop.firstAt, this.now())) return this.giveUp("CONNECTION_LOST");
       this.scheduleAttempt();
@@ -450,7 +479,25 @@ export class SessionController {
     this.drop = undefined;
   }
 
+  private startHeartbeat(): void {
+    const { heartbeat } = this.deps;
+    if (this.heartbeatTimer || !heartbeat) return;
+    this.heartbeatTimer = setInterval(() => {
+      const id = this.leaseId;
+      if (!id) return;
+      heartbeat(id)
+        .then((result) => {
+          if (result === "cap" && this.leaseId === id && ACTIVE.has(this.state.status)) this.endForCap();
+        })
+        .catch(() => undefined); // network blips are handled by the reconnect logic
+    }, HEARTBEAT_MS);
+  }
+
   protected teardown(): void {
+    clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = undefined;
+    if (this.leaseId) this.deps.releaseLease?.(this.leaseId);
+    this.leaseId = undefined;
     this.conn?.close();
     this.conn = undefined;
     this.releaseMic();

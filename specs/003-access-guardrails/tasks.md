@@ -26,7 +26,7 @@
 - [X] T011 [P] [US2] Extend tests/unit/instructions.test.ts: scope rule, decline rule, harmful rule, instruction-secrecy rule, existing injection rules kept
 - [X] T012 [US2] Update src/server/realtime/instructions.ts
 - [X] T013 [US2] Pin `raiPolicyName: 'Microsoft.DefaultV2'` on both deployments in infra/resources.bicep
-- [ ] T014 [US2] Live eval tools/eval/guardrails.ts + `npm run eval:guardrails` (text mode via the provider, unrelated/harmful/injection/on-topic prompts); record results in README
+- [X] T014 [US2] Live eval tools/eval/guardrails.ts + `npm run eval:guardrails` (text mode via the provider, unrelated/harmful/injection/on-topic prompts); record results in README
 
 ## Phase 4: User Story 3 - Voice capacity (P2)
 
@@ -44,7 +44,7 @@
 - [X] T020 Bicep `enableAccessCode` → KV reference `access-code` → env `ACCESS_CODE`; `maxVoiceSessions` param → env; deploy.yml `ENABLE_ACCESS_CODE` variable; `az bicep build` passes
 - [X] T021 README: guardrails section, security model, trade-offs, config table, sharing and rotating the code, eval results; architecture diagram note
 - [X] T022 Full gates: typecheck, lint, format, unit/integration, e2e, build
-- [ ] T023 PR, CI green, merge, deploy; create the Key Vault secret; enable the variable; production validation V1–V12
+- [X] T023 PR, CI green, merge, deploy; create the Key Vault secret; enable the variable; production validation V1–V12
 
 ## Review notes
 
@@ -60,3 +60,27 @@ An independent review pass of the diff (before the PR) found and fixed:
   are skipped now.
 - Body size caps on `/api/access` (8 KB) and `/api/session/release` (1 KB).
 - Per-replica cap multiplier documented in the README (accepted trade-off, research R5).
+
+## Production validation (2026-10-18, `92d25b8`)
+
+Deploy run succeeded; `/api/health` reports the new version and the relay online.
+
+| # | Check | Result |
+| --- | --- | --- |
+| V1 | `GET /` without the cookie | `307 /access?next=%2F` |
+| V2 | wrong code | `303 /access?error=code` |
+| V3 | 6 wrong codes from one IP | 5 × `error=code`, then `error=rate` |
+| V4 | right code | `303 /`, cookie `ttd_access` HttpOnly + Secure; `GET /` → 200 |
+| V5 | `POST /api/ingest/text` without the cookie | `401 UNAUTHORIZED` |
+| V6 | `GET /api/health` | 200 |
+| V7 | `POST` with `Origin: https://evil.example` | `403 FORBIDDEN` |
+| V8–V9 | `npm run eval:guardrails` against production | 13 / 13 ([docs/eval/guardrails.md](../../docs/eval/guardrails.md)) |
+| V10 | 4 voice session mints | 3 leases, 4th `503 VOICE_BUSY` |
+| V11 | release, then mint again; heartbeat; renew with the same lease; heartbeat after release | 204; new lease; 204; same lease; 404 |
+| V12 | YouTube `jNQXAC9IVRw` with the cookie, relay running | 200 in 2.9 s, `captionSource: relay` |
+| - | `/access?next=/%09/evil.example` | hidden field `next="/"` (open redirect closed) |
+| - | Deployment content filter | both deployments `Microsoft.DefaultV2` |
+| - | Container env | `ACCESS_CODE` from Key Vault reference `access-code`; `MAX_VOICE_SESSIONS=3` |
+
+Owner to-do: real-iPhone pass of the access screen and a voice conversation (quickstart V1, V4,
+V10 with two phones), and the guardrail prompts by voice.

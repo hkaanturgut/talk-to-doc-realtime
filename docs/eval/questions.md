@@ -44,4 +44,5 @@ video). Ask locally, with direct captions:
 - "What animals is he standing in front of?" Expected: elephants.
 - "What does he say is cool about them?" Expected: their really long trunks.
 
-In the hosted app, expect the paste fallback unless Supadata is enabled (see the README).
+In the hosted app, this works while the owner's caption relay is online (feature 002); otherwise the
+app offers the paste fallback (see the README).

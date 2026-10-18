@@ -41,6 +41,12 @@ param maxVoiceSessions int = 3
 @description('Wire the optional OpenAI API key from Key Vault (secret openai-api-key must exist).')
 param enableOpenAi bool = false
 
+@description('Custom hostname for the web app, e.g. talk-to-doc.hkaanturgut.com (feature 004). Empty = default FQDN only. DNS CNAME and asuid TXT must exist first.')
+param customDomainName string = ''
+
+@description('Name of the free managed certificate for customDomainName. Empty on the first provision (hostname added unbound); set it on the second to issue the certificate and bind it (SNI).')
+param customDomainCertificateName string = ''
+
 @description('Set by azd: true once the web container app exists, so provisioning keeps the deployed image.')
 param webExists bool = false
 
@@ -72,6 +78,8 @@ module resources 'resources.bicep' = {
     enableAccessCode: enableAccessCode
     maxVoiceSessions: maxVoiceSessions
     enableOpenAi: enableOpenAi
+    customDomainName: customDomainName
+    customDomainCertificateName: customDomainCertificateName
     webExists: webExists
   }
 }
@@ -86,3 +94,4 @@ output AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT string = resources.outputs.transcribeD
 output AZURE_KEY_VAULT_NAME string = resources.outputs.keyVaultName
 output SERVICE_WEB_NAME string = resources.outputs.webName
 output SERVICE_WEB_URI string = resources.outputs.webUri
+output SERVICE_WEB_CUSTOM_URI string = resources.outputs.webCustomUri

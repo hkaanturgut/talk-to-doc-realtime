@@ -27,6 +27,9 @@ param realtimeCapacity int = 10
 @description('Wire the optional Supadata transcript API key from Key Vault (secret supadata-api-key must exist).')
 param enableSupadata bool = false
 
+@description('Wire the outbound-only caption relay secret from Key Vault (secret caption-relay-secret must exist).')
+param enableCaptionRelay bool = false
+
 @description('Wire the optional OpenAI API key from Key Vault (secret openai-api-key must exist).')
 param enableOpenAi bool = false
 
@@ -57,6 +60,7 @@ module resources 'resources.bicep' = {
     realtimeModelVersion: realtimeModelVersion
     realtimeCapacity: realtimeCapacity
     enableSupadata: enableSupadata
+    enableCaptionRelay: enableCaptionRelay
     enableOpenAi: enableOpenAi
     webExists: webExists
   }

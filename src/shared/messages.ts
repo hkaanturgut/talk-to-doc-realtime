@@ -28,6 +28,8 @@ export const MESSAGES: Record<ErrorCode, string> = {
   TEXT_TOO_LARGE: "This text is longer than the 400,000 character limit.",
   DOCUMENT_NOT_FOUND: "This document has expired. Load it again to continue.",
   RATE_LIMITED: "Too many attempts. Wait a moment and try again.",
+  UNAUTHORIZED: "Not authorized.",
+  RELAY_JOB_NOT_FOUND: "This caption job is unknown or has expired.",
   REALTIME_UNAVAILABLE: "The voice service is busy. Try again in a moment.",
   REALTIME_AUTH: "Something went wrong on our side. Please try again later.",
   INTERNAL: "Something went wrong on our side. Please try again.",

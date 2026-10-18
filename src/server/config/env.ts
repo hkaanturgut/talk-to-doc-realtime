@@ -16,6 +16,7 @@ const EnvSchema = z
     OPENAI_REALTIME_MODEL: optional.default("gpt-realtime-2.1"),
     OPENAI_TRANSCRIBE_MODEL: optional.default("gpt-4o-mini-transcribe"),
     SUPADATA_API_KEY: optional,
+    CAPTION_RELAY_SECRET: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(32).optional()),
     APPLICATIONINSIGHTS_CONNECTION_STRING: optional,
     AZURE_OPENAI_API_KEY: optional,
   })

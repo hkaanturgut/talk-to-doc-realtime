@@ -25,6 +25,7 @@ jobs:
       # true once the container app exists, so provisioning keeps the deployed image
       SERVICE_WEB_RESOURCE_EXISTS: ${{ vars.SERVICE_WEB_RESOURCE_EXISTS || 'false' }}
       ENABLE_SUPADATA: ${{ vars.ENABLE_SUPADATA || 'false' }}
+      ENABLE_CAPTION_RELAY: ${{ vars.ENABLE_CAPTION_RELAY || 'false' }}
       ENABLE_OPENAI: ${{ vars.ENABLE_OPENAI || 'false' }}
       GIT_SHA: ${{ github.sha }}
     steps:

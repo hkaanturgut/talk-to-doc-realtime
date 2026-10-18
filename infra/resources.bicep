@@ -8,6 +8,7 @@ param realtimeModelName string
 param realtimeModelVersion string
 param realtimeCapacity int
 param enableSupadata bool
+param enableCaptionRelay bool
 param enableOpenAi bool
 param webExists bool
 
@@ -195,6 +196,15 @@ var optionalSecrets = concat(
         }
       ]
     : [],
+  enableCaptionRelay
+    ? [
+        {
+          name: 'caption-relay-secret'
+          keyVaultUrl: '${keyVault.outputs.uri}secrets/caption-relay-secret'
+          identity: identity.outputs.resourceId
+        }
+      ]
+    : [],
   enableOpenAi
     ? [
         {
@@ -208,6 +218,7 @@ var optionalSecrets = concat(
 
 var optionalEnv = concat(
   enableSupadata ? [{ name: 'SUPADATA_API_KEY', secretRef: 'supadata-api-key' }] : [],
+  enableCaptionRelay ? [{ name: 'CAPTION_RELAY_SECRET', secretRef: 'caption-relay-secret' }] : [],
   enableOpenAi ? [{ name: 'OPENAI_API_KEY', secretRef: 'openai-api-key' }] : []
 )
 

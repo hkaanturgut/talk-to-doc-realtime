@@ -1,7 +1,9 @@
 import "server-only";
 import { AppError, type ErrorCode } from "@/shared/errors";
 import { DirectProvider } from "./providers/direct";
+import { RelayProvider } from "./providers/relay";
 import { SupadataProvider } from "./providers/supadata";
+import { relayQueue, relaySecret } from "./relay";
 import { TranscriptError, type Transcript, type TranscriptErrorKind, type TranscriptProvider } from "./types";
 
 export { parseYouTubeUrl, canonicalUrl } from "./url";
@@ -39,6 +41,7 @@ export function defaultProviders(
   env: Record<string, string | undefined> = process.env,
 ): TranscriptProvider[] {
   const providers: TranscriptProvider[] = [new DirectProvider()];
+  if (relaySecret(env)) providers.push(new RelayProvider(relayQueue));
   if (env.SUPADATA_API_KEY) providers.push(new SupadataProvider(env.SUPADATA_API_KEY));
   return providers;
 }

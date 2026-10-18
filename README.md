@@ -62,35 +62,100 @@ To turn the microphone back on:
 
 ### YouTube in the hosted app
 
-YouTube blocks most cloud and datacenter IPs from reading captions: the player answers
-`LOGIN_REQUIRED` / "confirm you're not a bot", or 429. Azure egress is affected. The app therefore
-uses a **provider chain** (`src/server/ingestion/youtube/`):
+**The problem.** YouTube bot-checks every cloud and datacenter IP. We probed it from a container in
+the app's Azure region and from a home connection ([evidence](specs/002-caption-relay/spec.md#evidence-why-this-feature-exists)):
 
-| Order | Provider                                            | Where it works                 | Notes                                                                                     |
-| ----- | --------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
-| 1     | `direct` (`youtube-transcript-plus`, Innertube API) | locally and on residential IPs | free; usually blocked in Azure                                                            |
-| 2     | `supadata` (caption API)                            | anywhere                       | optional: set `ENABLE_SUPADATA=true` and store the key in Key Vault as `supadata-api-key` |
-| 3     | **Paste transcript** (UI)                           | always                         | YouTube → description → _Show transcript_ → copy → paste                                  |
+| What we tried                                   | Home IP                                                                         | Azure                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------- |
+| Innertube `player` (7 client types)             | captions (Android, iOS clients)                                                 | "Sign in to confirm you're not a bot" |
+| Watch page                                      | OK                                                                              | `LOGIN_REQUIRED`                      |
+| `get_transcript` (the _Show transcript_ panel)  | 400, needs a browser proof token                                                | blocked earlier, at the watch page    |
+| Official Data API `captions.download`           | 403 unless you can edit the video                                               | same                                  |
+| Fetch from the phone's browser (residential IP) | caption file readable, but its URL comes from a call YouTube rejects cross-site | -                                     |
+
+So no in-cloud path exists, and the official API only covers your own videos.
+
+**The design: an outbound-only caption relay** ([spec 002](specs/002-caption-relay/spec.md)). The
+owner runs a small worker on a home machine. It **calls out** to the app; nothing calls in.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as Phone
+    participant S as App (Azure)
+    participant R as Caption relay (owner's machine)
+    participant Y as YouTube
+
+    R->>S: GET /api/relay/next (Bearer secret, long poll ≤ 25 s)
+    P->>S: POST /api/ingest/youtube {url}
+    S->>Y: direct captions
+    Y-->>S: LOGIN_REQUIRED (cloud IP)
+    S->>S: relay online? queue job {jobId, videoId}, wait ≤ 15 s
+    S-->>R: 200 {jobId, videoId}
+    R->>Y: captions from the home IP
+    Y-->>R: transcript
+    R->>S: POST /api/relay/result {jobId, transcript} (Bearer secret)
+    S-->>P: PreviewDTO (same as any document)
+```
+
+Provider chain (`src/server/ingestion/youtube/`):
+
+| Order | Provider                  | When it runs                                                       | Notes                                                    |
+| ----- | ------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
+| 1     | `direct` (Innertube)      | always                                                             | works locally; blocked in Azure                          |
+| 2     | `relay`                   | `CAPTION_RELAY_SECRET` set **and** a relay polled in the last 30 s | fails fast when offline, so no extra wait                |
+| 3     | `supadata` (caption API)  | `SUPADATA_API_KEY` set                                             | optional third party; off                                |
+| 4     | **Paste transcript** (UI) | always                                                             | YouTube → description → _Show transcript_ → copy → paste |
 
 Definitive answers stop the chain (no captions, private or removed video). Blocked or transient
-failures move on to the next provider, and when all fail the UI switches to the paste tab with an
-explanation.
+failures move on; when all fail the UI switches to the paste tab with an explanation.
 
-Trade-offs considered:
+**Why it is safe**
 
-| Option                            | Cost                           | Why not the default                                 |
-| --------------------------------- | ------------------------------ | --------------------------------------------------- |
-| Residential proxy (e.g. Webshare) | about $3.50/GB plus a secret   | another moving part; still hit by PoToken checks    |
-| Caption API (Supadata)            | free tier 100/month, then paid | third-party dependency; wired in but off by default |
-| Paste transcript                  | free                           | one extra step for the user, but always works       |
+- **Nothing exposed at home.** The relay opens no port and needs no tunnel: only outbound HTTPS to
+  the app and YouTube. It works behind any router or firewall.
+- **Secret in Key Vault.** A 256-bit secret (`caption-relay-secret`). The app reads it through a
+  Key Vault reference with its managed identity; the relay reads it at start with the owner's
+  `az login`. It is never in the repo, logs, browser, or command line.
+- **Tight API.** `/api/relay/*` is `404` unless the secret is configured. Constant-time compare,
+  uniform `401`, `429` after 10 failures a minute. The relay only gets a video ID and an opaque job
+  ID, no viewer data. Results are zod-validated, size-capped (2 MB, 400k chars), accepted once,
+  and only while the job is still waiting.
+- **No browser change.** The client never learns about the relay.
 
-To enable Supadata on Azure:
+**When the relay is off** (laptop asleep, demo at 3 am): the app sees no recent poll and goes
+straight to the paste fallback, exactly as before. `GET /api/health` shows
+`"relay": {"online": false, "lastSeenSeconds": …}`.
+
+**Limits (interim by design)**: it depends on the owner's machine being on; the queue is in memory,
+so with several replicas only the one the relay polls can use it (the app runs one replica at demo
+load). **Production replacement**: the same worker on an always-on residential or mobile connection,
+with Azure Service Bus between it and the app and Entra ID instead of the shared secret (removes
+the replica limit and the secret), or a licensed caption source.
+
+**Run it**
 
 ```bash
-az keyvault secret set --vault-name "$(azd env get-value AZURE_KEY_VAULT_NAME)" \
-  --name supadata-api-key --value "<key>"
-azd env set ENABLE_SUPADATA true && azd provision
+# once: create the secret and turn the feature on
+KV=$(azd env get-value AZURE_KEY_VAULT_NAME)
+az keyvault secret set --vault-name "$KV" --name caption-relay-secret \
+  --value "$(openssl rand -base64 32)" -o none
+gh variable set ENABLE_CAPTION_RELAY --body true    # then re-run the deploy workflow
+
+# whenever you want YouTube to work on the hosted app
+npm run relay -- --app "$(azd env get-value SERVICE_WEB_URI)" --vault "$KV"
+# relay: polling https://ca-web-….azurecontainerapps.io (outbound only, Ctrl+C to stop)
+# relay: jNQXAC9IVRw ok 1.4s
 ```
+
+Other options considered:
+
+| Option                             | Why not                                                       |
+| ---------------------------------- | ------------------------------------------------------------- |
+| Inbound tunnel to a relay server   | puts a public URL in front of the home machine                |
+| Residential proxy (e.g. Webshare)  | third party, about $3.50/GB, still hit by proof-token checks  |
+| Caption API (Supadata)             | third-party dependency; wired in but off                      |
+| Minting proof tokens on the server | fragile, against YouTube's terms, and the IP block hits first |
 
 ### Poor networks, background and device changes
 
@@ -145,7 +210,7 @@ Module map (`src/`):
 
 | Folder                  | Role                                                                                              |
 | ----------------------- | ------------------------------------------------------------------------------------------------- |
-| `app/`                  | UI shell and thin route handlers (`/api/ingest/*`, `/api/session`, `/api/health`)                 |
+| `app/`                  | UI shell and thin route handlers (`/api/ingest/*`, `/api/session`, `/api/relay/*`, `/api/health`) |
 | `server/`               | Server-only: env, ingestion (PDF, YouTube, budget), document store, realtime providers, telemetry |
 | `client/`               | Browser-only logic, no React: WebRTC connection, event schemas, reducer, session controller       |
 | `components/`, `hooks/` | React UI and the `useVoiceSession` hook                                                           |
@@ -163,6 +228,7 @@ Each one has the alternatives it beat in [research.md](specs/001-voice-doc-chat/
 | Text fallback = the same Realtime session with text output                         | one model, one prompt, one security path                                         | [R4](specs/001-voice-doc-chat/research.md#r4-session-behavior-vad-interruption-transcripts-text-mode)                                                                   |
 | Whole document in the instructions (no RAG), cut to a 20k-token budget             | the brief excludes chunking; the cut is visible to the user                      | [R6](specs/001-voice-doc-chat/research.md#r6-context-budget-and-truncation)                                                                                             |
 | In-memory store with sticky sessions behind a `DocumentStore` interface            | the brief allows in-memory; Redis is a drop-in later                             | [R10](specs/001-voice-doc-chat/research.md#r10-server-side-state-and-scaling)                                                                                           |
+| Outbound-only caption relay on the owner's machine for YouTube                     | YouTube blocks all cloud IPs; nothing exposed at home; off = paste fallback      | [002 R1–R4](specs/002-caption-relay/research.md)                                                                                                                        |
 | Bicep (AVM) + azd, GitHub Actions over OIDC                                        | everything reproducible, no secrets in CI                                        | [R11](specs/001-voice-doc-chat/research.md#r11-infrastructure-identity-and-cicd)                                                                                        |
 
 ### Security model
@@ -184,6 +250,8 @@ microphone=(self)`, `nosniff`, `X-Frame-Options: DENY`, strict referrer.
 - **Privacy**: PDF bytes are never written to disk; only extracted text is kept in memory for 60
   minutes of inactivity. Telemetry uses an allowlist of property keys: no document text, history or
   tokens.
+- **Caption relay**: outbound-only, Key Vault secret, constant-time check, `404` when off,
+  single-use validated results ([details](#youtube-in-the-hosted-app)).
 - **Supply chain**: gitleaks scans the full history in CI; dependencies are pinned in the lockfile.
 
 ## Trade-offs and limitations
@@ -191,8 +259,9 @@ microphone=(self)`, `nosniff`, `X-Frame-Options: DENY`, strict referrer.
 - **Context**: Azure lists 32k input tokens for realtime models, so the app keeps a 20k-token
   (80,000-char) document budget. Longer documents are cut at a boundary and the UI says how much is
   used. A 300-page PDF uses about 10%. There is no RAG, by design of the brief.
-- **YouTube in the cloud**: captions are blocked from Azure IPs. The hosted app falls back to
-  _Paste transcript_ unless the optional caption API is enabled ([details](#youtube-in-the-hosted-app)).
+- **YouTube in the cloud**: captions are blocked from Azure IPs. The hosted app uses the
+  owner-run, outbound-only caption relay when it is online, and _Paste transcript_ otherwise
+  ([details](#youtube-in-the-hosted-app)).
 - **In-memory documents**: they are lost on a replica restart (the user sees "load it again"). Sticky
   sessions keep a visitor on one replica; Redis would remove the limit.
 - **Per-replica rate limits**: the effective limit is up to 3x with 3 replicas.
@@ -222,16 +291,17 @@ No API key is needed: the dev server uses your `az login` identity, which `azd p
 
 ### Configuration
 
-| Variable                                | Required | Default                  | Notes                                     |
-| --------------------------------------- | -------- | ------------------------ | ----------------------------------------- |
-| `REALTIME_PROVIDER`                     | no       | `azure`                  | `azure` or `openai`                       |
-| `AZURE_OPENAI_ENDPOINT`                 | azure    |                          | `https://<resource>.openai.azure.com`     |
-| `AZURE_OPENAI_REALTIME_DEPLOYMENT`      | no       | `gpt-realtime-2.1`       | deployment name                           |
-| `AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT`    | no       | `gpt-4o-mini-transcribe` | user-speech transcription                 |
-| `OPENAI_API_KEY`                        | openai   |                          | server-only; Key Vault reference in Azure |
-| `OPENAI_REALTIME_MODEL`                 | no       | `gpt-realtime-2.1`       |                                           |
-| `SUPADATA_API_KEY`                      | no       |                          | optional YouTube caption API (hosted app) |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | no       |                          | telemetry; Entra auth                     |
+| Variable                                | Required | Default                  | Notes                                                  |
+| --------------------------------------- | -------- | ------------------------ | ------------------------------------------------------ |
+| `REALTIME_PROVIDER`                     | no       | `azure`                  | `azure` or `openai`                                    |
+| `AZURE_OPENAI_ENDPOINT`                 | azure    |                          | `https://<resource>.openai.azure.com`                  |
+| `AZURE_OPENAI_REALTIME_DEPLOYMENT`      | no       | `gpt-realtime-2.1`       | deployment name                                        |
+| `AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT`    | no       | `gpt-4o-mini-transcribe` | user-speech transcription                              |
+| `OPENAI_API_KEY`                        | openai   |                          | server-only; Key Vault reference in Azure              |
+| `OPENAI_REALTIME_MODEL`                 | no       | `gpt-realtime-2.1`       |                                                        |
+| `SUPADATA_API_KEY`                      | no       |                          | optional YouTube caption API (hosted app)              |
+| `CAPTION_RELAY_SECRET`                  | no       |                          | enables `/api/relay/*`; ≥ 32 chars; Key Vault in Azure |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | no       |                          | telemetry; Entra auth                                  |
 
 The app refuses to start if `AZURE_OPENAI_API_KEY` is set: keyless auth only.
 

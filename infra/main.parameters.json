@@ -14,6 +14,8 @@
     "enableAccessCode": { "value": "${ENABLE_ACCESS_CODE=false}" },
     "maxVoiceSessions": { "value": "${MAX_VOICE_SESSIONS=3}" },
     "enableOpenAi": { "value": "${ENABLE_OPENAI=false}" },
+    "customDomainName": { "value": "${CUSTOM_DOMAIN_NAME=}" },
+    "customDomainCertificateName": { "value": "${CUSTOM_DOMAIN_CERTIFICATE_NAME=}" },
     "webExists": { "value": "${SERVICE_WEB_RESOURCE_EXISTS=false}" }
   }
 }

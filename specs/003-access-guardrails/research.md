@@ -103,6 +103,9 @@
 
 ## R9. Custom domain
 
+> **Update 2026-10-18**: resolved in [feature 004](../004-custom-domain/research.md): the owner already
+> owns `hkaanturgut.com` (DNS in Azure), so the app uses `talk-to-doc.hkaanturgut.com` at no cost.
+
 The owner has no domain and asked about a free one. Not doable unattended: every option needs a
 purchase or an external sign-up by the owner.
 

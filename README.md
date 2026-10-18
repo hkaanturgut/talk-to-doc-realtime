@@ -8,11 +8,16 @@ are no API keys anywhere.
 Built spec-first with [GitHub Spec Kit](https://github.com/github/spec-kit): see
 [`specs/001-voice-doc-chat/`](specs/001-voice-doc-chat/) for the spec, plan, research, contracts and
 tasks, [`specs/002-caption-relay/`](specs/002-caption-relay/) for YouTube on the hosted app, and
-[`specs/003-access-guardrails/`](specs/003-access-guardrails/) for the access code and guardrails.
+[`specs/003-access-guardrails/`](specs/003-access-guardrails/) for the access code and guardrails, and
+[`specs/004-custom-domain/`](specs/004-custom-domain/) for the custom domain.
 
 ## Live demo
 
-**https://ca-web-czb5frz44vkv6.thankfuldune-9c54b32a.canadacentral.azurecontainerapps.io**
+**https://talk-to-doc.hkaanturgut.com**
+
+(The default Container Apps address
+`https://ca-web-czb5frz44vkv6.thankfuldune-9c54b32a.canadacentral.azurecontainerapps.io` also works;
+the access code is asked once per address.)
 
 Enter the **access code** from the invitation email (once per device, valid for 7 days). Then open it
 on a phone, load a PDF, tap **Start voice chat**, allow the microphone, and ask a question.
@@ -275,6 +280,7 @@ Each one has the alternatives it beat in [research.md](specs/001-voice-doc-chat/
 | Scope rules in the prompt + Azure default content filter, no classifier call       | no added latency; voice turns never pass through our server                      | [003 R4](specs/003-access-guardrails/research.md#r4-keeping-the-assistant-on-topic-and-handling-harmful-requests)                                                       |
 | Voice slots with heartbeat (cap 3), server refuses renewals after 15 minutes       | bounds concurrent cost; frees slots of crashed tabs in 90 s                      | [003 R5–R6](specs/003-access-guardrails/research.md#r5-capping-concurrent-voice-conversations)                                                                          |
 | Outbound-only caption relay on the owner's machine for YouTube                     | YouTube blocks all cloud IPs; nothing exposed at home; off = paste fallback      | [002 R1–R4](specs/002-caption-relay/research.md)                                                                                                                        |
+| `talk-to-doc.hkaanturgut.com`: subdomain of the owner's domain, free managed cert  | readable link, USD 0, auto-renewed; no purchase or third-party sign-up           | [004 R1–R3](specs/004-custom-domain/research.md)                                                                                                                        |
 | Bicep (AVM) + azd, GitHub Actions over OIDC                                        | everything reproducible, no secrets in CI                                        | [R11](specs/001-voice-doc-chat/research.md#r11-infrastructure-identity-and-cicd)                                                                                        |
 
 ### Security model
@@ -380,6 +386,10 @@ Everything is Bicep ([Azure Verified Modules](https://aka.ms/avm)) deployed with
 - Foundry (AI Services) with `gpt-realtime-2.1` and `gpt-4o-mini-transcribe` deployments.
 - Key Vault (RBAC), Log Analytics and Application Insights.
 - A user-assigned managed identity and all role assignments.
+- Optional custom domain with a free managed certificate (`CUSTOM_DOMAIN_NAME`,
+  `CUSTOM_DOMAIN_CERTIFICATE_NAME`; two provisions on a fresh environment, see
+  [004 quickstart](specs/004-custom-domain/quickstart.md)). DNS records live in the owner's
+  `hkaanturgut.com` zone.
 
 ```bash
 azd up                                       # first time

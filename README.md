@@ -10,6 +10,9 @@ Built spec-first with [GitHub Spec Kit](https://github.com/github/spec-kit): see
 tasks, [`specs/002-caption-relay/`](specs/002-caption-relay/) for YouTube on the hosted app, and
 [`specs/003-access-guardrails/`](specs/003-access-guardrails/) for the access code and guardrails.
 
+**Design docs**: [High-level design](docs/design/HLD.md) · [Low-level design](docs/design/LLD.md) ·
+[Decision log](docs/design/DECISIONS.md) (options compared and trade-offs) · [All docs](docs/README.md)
+
 ## Live demo
 
 **https://ca-web-czb5frz44vkv6.thankfuldune-9c54b32a.canadacentral.azurecontainerapps.io**

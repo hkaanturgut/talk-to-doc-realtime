@@ -17,7 +17,7 @@ What it shows:
   - the direct WebRTC media and event path from the phone to Foundry, which never passes through
     the app.
 - **Where secrets live**: nowhere in the client or GitHub. The app runs as a user-assigned managed
-  identity (red dashed edges are its RBAC roles). Key Vault holds only optional third-party keys.
+  identity (red dashed edges are its RBAC roles). Key Vault holds the access code, the caption relay secret and optional third-party keys.
   CI authenticates with an OIDC federated credential.
 
 Icons: the Azure, GitHub and Next.js icons come from the

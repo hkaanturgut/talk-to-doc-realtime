@@ -1,5 +1,6 @@
 import { documentStore } from "@/server/documents";
 import { createDocument, toPreview } from "@/server/documents/create";
+import { requireAccess } from "@/server/access/require";
 import { clientIp } from "@/server/http/client-ip";
 import { ingestLimiter } from "@/server/http/rate-limit";
 import { errorResponse } from "@/server/http/respond";
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    await requireAccess(request);
     ingestLimiter.check(clientIp(request));
     const { url } = YouTubeRequestSchema.parse(await request.json().catch(() => ({})));
     const videoId = parseYouTubeUrl(url);

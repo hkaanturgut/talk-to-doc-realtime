@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { fetchSession } from "@/client/api";
+import { fetchSession, heartbeatLease, releaseLease } from "@/client/api";
 import { connect, type ConnectFn } from "@/client/realtime/connection";
 import { SessionController } from "@/client/realtime/controller";
 import { installFakeRealtime } from "@/client/realtime/fake";
@@ -30,6 +30,8 @@ export function useVoiceSession(
       documentId: doc.documentId,
       title: doc.title,
       fetchSession,
+      heartbeat: heartbeatLease,
+      releaseLease,
       connect: pickConnect(),
       getUserMedia: (c) => navigator.mediaDevices.getUserMedia(c),
       audioEl: () => audio.el,

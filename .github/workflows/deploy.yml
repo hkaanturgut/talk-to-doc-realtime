@@ -26,6 +26,8 @@ jobs:
       SERVICE_WEB_RESOURCE_EXISTS: ${{ vars.SERVICE_WEB_RESOURCE_EXISTS || 'false' }}
       ENABLE_SUPADATA: ${{ vars.ENABLE_SUPADATA || 'false' }}
       ENABLE_CAPTION_RELAY: ${{ vars.ENABLE_CAPTION_RELAY || 'false' }}
+      ENABLE_ACCESS_CODE: ${{ vars.ENABLE_ACCESS_CODE || 'false' }}
+      MAX_VOICE_SESSIONS: ${{ vars.MAX_VOICE_SESSIONS || '3' }}
       ENABLE_OPENAI: ${{ vars.ENABLE_OPENAI || 'false' }}
       GIT_SHA: ${{ github.sha }}
     steps:

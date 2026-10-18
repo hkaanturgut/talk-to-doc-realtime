@@ -11,6 +11,8 @@
     "realtimeCapacity": { "value": "${REALTIME_CAPACITY=10}" },
     "enableSupadata": { "value": "${ENABLE_SUPADATA=false}" },
     "enableCaptionRelay": { "value": "${ENABLE_CAPTION_RELAY=false}" },
+    "enableAccessCode": { "value": "${ENABLE_ACCESS_CODE=false}" },
+    "maxVoiceSessions": { "value": "${MAX_VOICE_SESSIONS=3}" },
     "enableOpenAi": { "value": "${ENABLE_OPENAI=false}" },
     "webExists": { "value": "${SERVICE_WEB_RESOURCE_EXISTS=false}" }
   }

@@ -30,6 +30,14 @@ param enableSupadata bool = false
 @description('Wire the outbound-only caption relay secret from Key Vault (secret caption-relay-secret must exist).')
 param enableCaptionRelay bool = false
 
+@description('Require the access code from Key Vault (secret access-code must exist) for every page and API (feature 003).')
+param enableAccessCode bool = false
+
+@description('Maximum concurrent live voice conversations per app instance (feature 003).')
+@minValue(1)
+@maxValue(50)
+param maxVoiceSessions int = 3
+
 @description('Wire the optional OpenAI API key from Key Vault (secret openai-api-key must exist).')
 param enableOpenAi bool = false
 
@@ -61,6 +69,8 @@ module resources 'resources.bicep' = {
     realtimeCapacity: realtimeCapacity
     enableSupadata: enableSupadata
     enableCaptionRelay: enableCaptionRelay
+    enableAccessCode: enableAccessCode
+    maxVoiceSessions: maxVoiceSessions
     enableOpenAi: enableOpenAi
     webExists: webExists
   }

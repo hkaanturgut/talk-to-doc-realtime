@@ -41,6 +41,8 @@ export type SessionMode = z.infer<typeof SessionModeSchema>;
 export const SessionRequestSchema = z.object({
   documentId: z.uuid(),
   mode: SessionModeSchema,
+  /** Voice slot to renew (token refresh, reconnect). Feature 003. */
+  leaseId: z.uuid().optional(),
   history: z
     .array(HistoryItemSchema)
     .max(MAX_HISTORY_ITEMS)
@@ -58,6 +60,7 @@ export const SessionResponseSchema = z.object({
   model: z.string(),
   provider: z.enum(["azure", "openai"]),
   sessionMaxSeconds: z.number().int().positive(),
+  leaseId: z.uuid().optional(),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
@@ -68,6 +71,8 @@ export const ErrorBodySchema = z.object({
     retryable: z.boolean(),
   }),
 });
+export const LeaseRequestSchema = z.object({ leaseId: z.uuid() });
+
 export type ErrorBody = z.infer<typeof ErrorBodySchema>;
 
 export const YouTubeRequestSchema = z.object({ url: z.string().min(1).max(2048) });

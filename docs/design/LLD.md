@@ -579,7 +579,7 @@ Telemetry is wired in [`telemetry.ts`](../../src/server/telemetry.ts):
 | `session_created`   | `/api/session`          | `mode`, `provider`, `kind`                                           |
 | `session_failed`    | `/api/session`          | `mode`, `code`                                                       |
 | `access_granted`    | `/api/access`           | none                                                                 |
-| `access_denied`     | `/api/access`           | none: the route passes `reason`, which isn't on the allowlist        |
+| `access_denied`     | `/api/access`           | `reason` (`code` or `rate`)                                          |
 | exceptions          | `errorResponse()`       | `route`, `code`; only unexpected errors and 5xx                      |
 
 The client measures latency on the data channel (`?debug=1`): reply start runs from
@@ -592,7 +592,7 @@ The client measures latency on the data channel (`?debug=1`): reply start runs f
 | -------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit                 | 296 (30 files) | Vitest                                                                                                                            | URL parser, normalizer, budget, PDF edge cases, env, errors, rate limiter, store TTL and LRU, instructions, session config, reducer, controller (reconnect, background, device change, leases, text fallback), connection, relay queue, auth and worker, access cookie and gate, voice leases |
 | Integration          | 54 (7 files)   | Vitest with real route handlers                                                                                                   | Ingest PDF, YouTube and text; session (no key leak, rate limits, history escaping, leases); relay routes; access; health                                                                                                                                                                      |
-| End-to-end           | 37             | Playwright, iPhone 15 WebKit + Pixel 7 Chromium, fake realtime transport                                                          | Upload → preview → voice, barge-in, mute, mic denied → text, YouTube → paste, reconnect and give-up (clock API), axe in light and dark mode, the access gate on a second server with `ACCESS_CODE`                                                                                            |
+| End-to-end           | 39             | Playwright, iPhone 15 WebKit + Pixel 7 Chromium, fake realtime transport                                                          | Upload → preview → voice, barge-in, mute, mic denied → text, YouTube → paste, reconnect and give-up (clock API), axe in light and dark mode, the access gate on a second server with `ACCESS_CODE`, a 15 MB upload through the proxy                                                         |
 | Grounding eval       | 10 questions   | manual and scripted, text mode, deployed app                                                                                      | 10/10 ([docs/eval/questions.md](../eval/questions.md))                                                                                                                                                                                                                                        |
 | Guardrail eval       | 13 cases       | `npm run eval:guardrails`, deployed app                                                                                           | On-topic 4/4, unrelated 6/6, harmful, injection, secrecy ([docs/eval/guardrails.md](../eval/guardrails.md))                                                                                                                                                                                   |
 | Manual device checks | n/a            | [001 quickstart](../../specs/001-voice-doc-chat/quickstart.md), [003 quickstart](../../specs/003-access-guardrails/quickstart.md) | Real audio on iPhone and Android; can't be automated                                                                                                                                                                                                                                          |
@@ -617,20 +617,11 @@ corrupt and not-a-PDF files. There are no binary blobs of unknown origin.
 - **Static CSP**: wildcard `https://*.openai.azure.com`, because the headers are fixed at build
   time.
 - **Context**: 20k-token document budget on Azure; longer documents use only their beginning.
-- **Telemetry**: `access_denied` loses its `reason` property, which isn't on the allowlist.
 
-### Open issue: proxy body limit truncates large PDF uploads
+### Fixed: proxy body limit truncated large PDF uploads
 
-Found while writing this document. Since `src/proxy.ts` was added (feature 003), Next.js buffers
-request bodies for the proxy and keeps only the first `experimental.proxyClientMaxBodySize`, which
-defaults to 10 MB. `next.config.ts` doesn't raise it.
-
-- **Effect**: a PDF between 10 MB and 25 MB reaches the route truncated, and the upload fails with
-  `PDF_MISSING` ("Choose a PDF file first").
-- **Reproduced locally** with `next start`:
-  - a 9 MB body gets `PDF_NOT_PDF` (expected for a non-PDF test body);
-  - a 15 MB body gets `PDF_MISSING`, and the server logs "Request body exceeded 10MB".
-- **Fix verified locally**: setting
-  `experimental: { proxyClientMaxBodySize: 25 * 1024 * 1024 + 64 * 1024 }` lets 15 MB and 24 MB
-  bodies reach the PDF checks.
-- **Regression test**: an e2e test that uploads a body larger than 10 MB through the real server.
+Found while writing this document and fixed in PR #15. Since `src/proxy.ts` was added (feature
+003), Next.js buffers request bodies for the proxy and keeps only the first
+`experimental.proxyClientMaxBodySize` (10 MB by default), so PDFs between 10 and 25 MB failed with
+`PDF_MISSING`. `next.config.ts` now sets it to `MAX_PDF_BYTES` + 64 KiB, and
+`tests/e2e/pdf-size.spec.ts` uploads 15 MB through the real server (it fails without the fix).

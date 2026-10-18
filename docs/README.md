@@ -21,4 +21,4 @@ contracts, quickstart (manual checks) and tasks:
 | [001-voice-doc-chat](../specs/001-voice-doc-chat/)       | The core app: PDF, YouTube and text ingestion; voice and text conversation; reconnect; deployment |
 | [002-caption-relay](../specs/002-caption-relay/)         | Outbound-only caption relay for YouTube on the hosted app                                         |
 | [003-access-guardrails](../specs/003-access-guardrails/) | Access code, conversation guardrails, voice capacity cap, cross-site protection                   |
-| `004-custom-domain` (in progress)                        | `talk-to-doc.hkaanturgut.com` with a managed certificate                                          |
+| [004-custom-domain](../specs/004-custom-domain/)         | `talk-to-doc.hkaanturgut.com` with a managed certificate                                          |

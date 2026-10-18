@@ -191,7 +191,7 @@ Worst case per instance: 3 × 15-minute voice conversations at a time. Teardown:
   - 1 to 3 replicas;
   - probes on `/api/health`.
 - **Default host**: `ca-web-<token>.<env-domain>.canadacentral.azurecontainerapps.io`.
-- **Custom domain**: `talk-to-doc.hkaanturgut.com` is being added in `specs/004-custom-domain/`, with
+- **Custom domain**: `https://talk-to-doc.hkaanturgut.com` ([`specs/004-custom-domain/`](../../specs/004-custom-domain/)), with
   a free Container Apps managed certificate. It is a subdomain of the owner's existing domain; the
   DNS zone is in Azure. See [DECISIONS.md D-17](DECISIONS.md#d-17-custom-domain).
 - **Pipeline**: a push to `main` triggers `deploy.yml`:

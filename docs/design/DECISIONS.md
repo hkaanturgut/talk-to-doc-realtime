@@ -267,8 +267,8 @@ Overview: [HLD.md](HLD.md). Implementation: [LLD.md](LLD.md).
   - The access screen is a server-rendered plain form, so it works without JavaScript.
 - **Consequences**: This reverses 001 R7's "no `proxy.ts`" rule. That rule existed because Next's
   `proxyClientMaxBodySize` (10 MB by default) truncates request bodies that pass through the proxy.
-  `next.config.ts` must therefore raise that limit above 25 MB plus multipart overhead; see
-  [LLD §13](LLD.md#13-known-limitations-and-open-issues).
+  `next.config.ts` raises that limit to 25 MB plus multipart overhead (fixed in PR #15, regression
+  test `tests/e2e/pdf-size.spec.ts`); see [LLD §13](LLD.md#13-known-limitations-and-open-issues).
 - **Source**: [003 R3](../../specs/003-access-guardrails/research.md#r3-where-to-enforce-the-gate).
 
 ## D-14. Guardrails in the prompt plus the default content filter
@@ -365,7 +365,8 @@ Overview: [HLD.md](HLD.md). Implementation: [LLD.md](LLD.md).
   - TLS uses a **free Container Apps managed certificate**, added in two steps: bind the hostname
     with the binding disabled, issue the certificate, then bind it with SNI.
   - The binding is declared in Bicep, so `azd provision` doesn't remove it.
-  - Implementation: `specs/004-custom-domain/` (in progress).
+  - Implementation: [`specs/004-custom-domain/`](../../specs/004-custom-domain/) (live since
+    2026-10-18; certificate issued by GeoTrust, auto-renewed).
 - **Consequences**:
   - No new cost or account.
   - The existing records in the zone are not touched.
@@ -373,4 +374,5 @@ Overview: [HLD.md](HLD.md). Implementation: [LLD.md](LLD.md).
   - The access cookie is host-only, so a device that unlocked the old host enters the code once
     more on the new one.
 - **Source**: [003 R9](../../specs/003-access-guardrails/research.md#r9-custom-domain) (options when
-  no domain was assumed); `specs/004-custom-domain/` (decision and runbook).
+  no domain was assumed); [004 research](../../specs/004-custom-domain/research.md) and
+  [quickstart](../../specs/004-custom-domain/quickstart.md) (decision and runbook).

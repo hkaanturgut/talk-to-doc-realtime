@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { MAX_PDF_BYTES } from "./src/shared/messages";
+
 const isDev = process.env.NODE_ENV !== "production";
 
 // Static CSP: headers are fixed at build time and the remote Docker build has no endpoint env, so the
@@ -22,6 +24,11 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   serverExternalPackages: ["@azure/monitor-opentelemetry", "@azure/identity", "unpdf"],
+  experimental: {
+    // src/proxy.ts buffers request bodies and truncates them at 10 MB by default, which broke PDF
+    // uploads between 10 and 25 MB. Allow the PDF limit plus multipart overhead.
+    proxyClientMaxBodySize: MAX_PDF_BYTES + 64 * 1024,
+  },
   async headers() {
     return [
       {

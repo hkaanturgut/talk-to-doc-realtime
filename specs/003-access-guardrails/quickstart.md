@@ -3,7 +3,7 @@
 ## Enable the access code (owner, once)
 
 ```bash
-KV=kv-czb5frz44vkv6; SUB=fc4b39c5-adad-4de0-a91a-06dd08aa2e8f
+KV=kv-czb5frz44vkv6; SUB=<subscription-id>
 az keyvault secret set --subscription $SUB --vault-name $KV --name access-code \
   --value "$(openssl rand -base64 18 | tr -d '/+=' )" -o none
 gh variable set ENABLE_ACCESS_CODE --body true      # then run the deploy workflow

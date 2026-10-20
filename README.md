@@ -417,11 +417,11 @@ npm run fixtures    # regenerate test PDFs (text, 300 pages, scanned, encrypted,
 
 What runs where:
 
-| Layer                | Count | Covers                                                                                                                                                                                                |
-| -------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit (Vitest)        | ~290  | URL parser, normalizer, budget, PDF edge cases, error mapping, rate limiter, store TTL/LRU, instruction escaping, event reducer, controller (reconnect, background, device change, text fallback)     |
-| Integration (Vitest) | ~60   | real route handlers: ingest PDF/YouTube/text, session (no key leak, rate limits, history escaping)                                                                                                    |
-| E2E (Playwright)     | 37    | both mobile profiles: upload → preview → voice with a fake transport, barge-in, mute, mic denied → text, YouTube → paste, reconnect and give-up (clock API), axe accessibility in light and dark mode |
+| Layer                | Count | Covers                                                                                                                                                                                                                                      |
+| -------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit (Vitest)        | ~290  | URL parser, normalizer, budget, PDF edge cases, error mapping, rate limiter, store TTL/LRU, instruction escaping, event reducer, controller (reconnect, background, device change, text fallback)                                           |
+| Integration (Vitest) | ~60   | real route handlers: ingest PDF/YouTube/text, session (no key leak, rate limits, history escaping)                                                                                                                                          |
+| E2E (Playwright)     | 41    | both mobile profiles: upload → preview → voice with a fake transport, barge-in, mute, mic denied → text, YouTube → paste, reconnect and give-up (clock API), axe accessibility in light and dark mode, upload size limits through the proxy |
 
 Real audio can't be automated, so [quickstart.md](specs/001-voice-doc-chat/quickstart.md) has the
 manual device checklist, and [docs/eval/questions.md](docs/eval/questions.md) has the grounding

@@ -6,6 +6,9 @@ Render (needs Graphviz):
 Outputs architecture.png and architecture.svg next to this file.
 """
 
+import base64
+import re
+
 from diagrams import Cluster, Diagram, Edge
 from diagrams.azure.aimachinelearning import AIStudio
 from diagrams.azure.compute import ContainerApps, ContainerRegistries
@@ -85,6 +88,20 @@ def render(fmt: str) -> None:
         actions >> deploy("remote build") >> acr
 
 
+def inline_svg_icons(path: str = "architecture.svg") -> None:
+    """Graphviz links icons by absolute local path; embed them so the SVG renders anywhere."""
+    with open(path) as f:
+        svg = f.read()
+
+    def embed(m: re.Match[str]) -> str:
+        with open(m.group(1), "rb") as icon:
+            return 'xlink:href="data:image/png;base64,' + base64.b64encode(icon.read()).decode() + '"'
+
+    with open(path, "w") as f:
+        f.write(re.sub(r'xlink:href="(/[^"]+\.png)"', embed, svg))
+
+
 if __name__ == "__main__":
     for fmt in ("png", "svg"):
         render(fmt)
+    inline_svg_icons()

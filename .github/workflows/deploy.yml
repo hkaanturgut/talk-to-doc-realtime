@@ -29,6 +29,9 @@ jobs:
       ENABLE_ACCESS_CODE: ${{ vars.ENABLE_ACCESS_CODE || 'false' }}
       MAX_VOICE_SESSIONS: ${{ vars.MAX_VOICE_SESSIONS || '3' }}
       ENABLE_OPENAI: ${{ vars.ENABLE_OPENAI || 'false' }}
+      # custom domain (feature 004); empty = default FQDN only
+      CUSTOM_DOMAIN_NAME: ${{ vars.CUSTOM_DOMAIN_NAME || '' }}
+      CUSTOM_DOMAIN_CERTIFICATE_NAME: ${{ vars.CUSTOM_DOMAIN_CERTIFICATE_NAME || '' }}
       GIT_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5

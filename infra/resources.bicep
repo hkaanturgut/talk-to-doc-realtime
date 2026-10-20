@@ -12,6 +12,8 @@ param enableCaptionRelay bool
 param enableAccessCode bool
 param maxVoiceSessions int
 param enableOpenAi bool
+param customDomainName string
+param customDomainCertificateName string
 param webExists bool
 
 var transcribeModelName = 'gpt-4o-mini-transcribe'
@@ -186,6 +188,35 @@ module containerEnv 'br/public:avm/res/app/managed-environment:0.16.0' = {
   }
 }
 
+resource containerEnvRef 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
+  name: '${abbrs.appManagedEnvironments}${resourceToken}'
+}
+
+// Custom domain (feature 004), two steps because the managed certificate validates a hostname that is
+// already on the app: 1) name only -> hostname added with binding Disabled; 2) certificate name too ->
+// free managed certificate (CNAME validation) issued and bound with SNI.
+var bindCustomDomain = !empty(customDomainName) && !empty(customDomainCertificateName)
+
+resource customDomainCert 'Microsoft.App/managedEnvironments/managedCertificates@2025-01-01' = if (bindCustomDomain) {
+  parent: containerEnvRef
+  name: empty(customDomainCertificateName) ? 'unused' : customDomainCertificateName
+  location: location
+  tags: tags
+  properties: {
+    subjectName: customDomainName
+    domainControlValidation: 'CNAME'
+  }
+  dependsOn: [containerEnv]
+}
+
+var customDomains = empty(customDomainName)
+  ? []
+  : [
+      bindCustomDomain
+        ? { name: customDomainName, bindingType: 'SniEnabled', certificateId: customDomainCert.id }
+        : { name: customDomainName, bindingType: 'Disabled' }
+    ]
+
 resource existingWeb 'Microsoft.App/containerApps@2025-01-01' existing = if (webExists) {
   name: webName
 }
@@ -262,6 +293,7 @@ module web 'br/public:avm/res/app/container-app:0.23.0' = {
     ingressTargetPort: appPort
     ingressAllowInsecure: false
     ingressTransport: 'auto'
+    customDomains: customDomains
     stickySessionsAffinity: 'sticky'
     activeRevisionsMode: 'Single'
     scaleSettings: {
@@ -302,3 +334,4 @@ output transcribeDeployment string = transcribeModelName
 output keyVaultName string = keyVault.outputs.name
 output webName string = web.outputs.name
 output webUri string = 'https://${web.outputs.fqdn}'
+output webCustomUri string = bindCustomDomain ? 'https://${customDomainName}' : ''

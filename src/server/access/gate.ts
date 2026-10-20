@@ -1,3 +1,4 @@
+import { MAX_PDF_BYTES } from "@/shared/messages";
 import { verifyAccessCookie } from "./cookie";
 
 export interface GateInput {
@@ -7,6 +8,8 @@ export interface GateInput {
   host: string | null;
   origin: string | null;
   fetchSite: string | null;
+  /** Declared request body size (Content-Length header), if any. */
+  contentLength?: string | null;
   cookie: string | undefined;
   /** Configured access code; undefined turns the access gate off (FR-013). */
   code: string | undefined;
@@ -15,6 +18,7 @@ export interface GateInput {
 export type GateDecision =
   | { action: "pass" }
   | { action: "forbidden" }
+  | { action: "too_large"; code: "PDF_TOO_LARGE" | "INVALID_REQUEST" }
   | { action: "unauthorized" }
   | { action: "redirect"; location: string };
 
@@ -23,6 +27,11 @@ const PUBLIC_EXACT = new Set(["/access", "/api/access", "/api/health", "/robots.
 
 const isRelay = (pathname: string) => pathname.startsWith("/api/relay/");
 const isPublic = (pathname: string) => PUBLIC_EXACT.has(pathname) || isRelay(pathname);
+
+const PDF_PATH = "/api/ingest/pdf";
+/** next.config.ts raises the proxy body buffer for PDFs; every other API body stays far smaller. */
+export const MAX_PDF_REQUEST_BYTES = MAX_PDF_BYTES + 64 * 1024;
+export const MAX_API_REQUEST_BYTES = 2 * 1024 * 1024;
 
 /** True when a browser tells us the request came from another site (research R7). */
 function isCrossSite(input: GateInput): boolean {
@@ -48,6 +57,15 @@ export function safeNext(next: string | null | undefined): string {
 /** Pure decision for src/proxy.ts: origin check first, then the access gate. */
 export async function decide(input: GateInput): Promise<GateDecision> {
   const { pathname } = input;
+  // Refuse oversized declared bodies before Next buffers them (only the PDF route needs 25 MB).
+  const declared = Number(input.contentLength ?? 0);
+  if (!SAFE_METHODS.has(input.method) && pathname.startsWith("/api/")) {
+    const isPdf = pathname === PDF_PATH;
+    if (declared > (isPdf ? MAX_PDF_REQUEST_BYTES : MAX_API_REQUEST_BYTES)) {
+      return { action: "too_large", code: isPdf ? "PDF_TOO_LARGE" : "INVALID_REQUEST" };
+    }
+  }
+
   if (
     !SAFE_METHODS.has(input.method) &&
     pathname.startsWith("/api/") &&

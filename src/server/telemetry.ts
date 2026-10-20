@@ -15,6 +15,7 @@ const ALLOWED_KEYS = new Set([
   "status",
   "durationMs",
   "captionSource",
+  "reason",
 ]);
 
 export type TelemetryProps = Record<string, string | number | boolean | undefined>;

@@ -14,6 +14,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     host: request.headers.get("host"),
     origin: request.headers.get("origin"),
     fetchSite: request.headers.get("sec-fetch-site"),
+    contentLength: request.headers.get("content-length"),
     cookie: request.cookies.get(ACCESS_COOKIE)?.value,
     code: accessCode(),
   });
@@ -23,6 +24,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return NextResponse.next();
     case "redirect":
       return NextResponse.redirect(new URL(decision.location, request.url), 307);
+    case "too_large":
+      return refuse(decision.code);
     case "forbidden":
       return refuse("FORBIDDEN");
     case "unauthorized":

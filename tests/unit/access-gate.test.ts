@@ -33,6 +33,30 @@ describe("access gate", () => {
     });
   });
 
+  it("refuses oversized declared API bodies before anything else", async () => {
+    const pdf = input({ pathname: "/api/ingest/pdf", method: "POST", code: undefined });
+    expect(await decide({ ...pdf, contentLength: String(26 * 1024 * 1024) })).toEqual({
+      action: "too_large",
+      code: "PDF_TOO_LARGE",
+    });
+    expect(await decide({ ...pdf, contentLength: String(15 * 1024 * 1024) })).toEqual({ action: "pass" });
+    for (const pathname of ["/api/access", "/api/ingest/text", "/api/session", "/api/relay/result"]) {
+      expect(
+        await decide(
+          input({ pathname, method: "POST", code: undefined, contentLength: String(3 * 1024 * 1024) }),
+        ),
+      ).toEqual({ action: "too_large", code: "INVALID_REQUEST" });
+    }
+    expect(
+      await decide(
+        input({ pathname: "/api/ingest/text", method: "POST", code: undefined, contentLength: "1000" }),
+      ),
+    ).toEqual({ action: "pass" });
+    expect(await decide(input({ code: undefined, contentLength: String(30 * 1024 * 1024) }))).toEqual({
+      action: "pass",
+    });
+  });
+
   it("refuses APIs with 401", async () => {
     expect(await decide(input({ pathname: "/api/ingest/text", method: "POST" }))).toEqual({
       action: "unauthorized",

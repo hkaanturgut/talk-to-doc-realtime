@@ -11,6 +11,9 @@ tasks, [`specs/002-caption-relay/`](specs/002-caption-relay/) for YouTube on the
 [`specs/003-access-guardrails/`](specs/003-access-guardrails/) for the access code and guardrails, and
 [`specs/004-custom-domain/`](specs/004-custom-domain/) for the custom domain.
 
+**Design docs**: [High-level design](docs/design/HLD.md) · [Low-level design](docs/design/LLD.md) ·
+[Decision log](docs/design/DECISIONS.md) (options compared and trade-offs) · [All docs](docs/README.md)
+
 ## Live demo
 
 **https://talk-to-doc.hkaanturgut.com**

@@ -3,7 +3,7 @@
 ## One-time setup (already done for `talk-to-doc-dev`)
 
 ```bash
-S=fc4b39c5-adad-4de0-a91a-06dd08aa2e8f   # owner's subscription
+S=<subscription-id>
 APP=ca-web-czb5frz44vkv6; ENV=cae-czb5frz44vkv6; RG=rg-talk-to-doc-dev
 H=talk-to-doc.hkaanturgut.com
 
